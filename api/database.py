@@ -11,13 +11,3 @@ def get_db_connection():
         cursor_factory=RealDictCursor
     )
     return conn
-
-def get_db2_connection(dbname="userdb"):
-    conn = psycopg2.connect(
-        host = "192.168.100.92", 
-        database = dbname, 
-        user = "postgres", 
-        password = "nutanix/4u",
-        cursor_factory=RealDictCursor
-    )
-    return conn
