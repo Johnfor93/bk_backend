@@ -9,18 +9,19 @@ from .database import get_db_connection
 from . import util
 from .auth import token_required
 
-bp = Blueprint("category", __name__)
+bp = Blueprint("faculty", __name__)
 
-def categoryJson(item):
+def facultyJson(item):
     return {
-        "category_code": item["category_code"],
-        "category_name": item["category_name"],
-        "category_note": item["category_note"]
+        "faculty_code": item["faculty_code"],
+        "university_code": item["university_code"],
+        "faculty_name": item["faculty_name"],
+        "faculty_note": item["faculty_note"]
     }
 
-@bp.route("/categorys", methods=["POST"])
+@bp.route("/facultys", methods=["POST"])
 @token_required
-def categorys():
+def facultys():
     if(request.method == "POST"):
         try:
             conn = get_db_connection()
@@ -28,12 +29,14 @@ def categorys():
             content = request.get_json()
 
             error = ""
-            if(not('category_name' in content.keys()) or len(content['category_name']) == 0):
-                error+="Nama Kategori Kosong! "
+            if(not('faculty_name' in content.keys()) or len(content['faculty_name']) == 0):
+                error+="Nama Fakultas Kosong! "
+            if(not('university_code' in content.keys()) or len(content['university_code']) == 0):
+                error+="Nama Universitas Tidak Boleh Kosong! "
             
-            category_note = ""
-            if('category_note' in content.keys()):
-                category_note = content["category_note"]
+            faculty_note = ""
+            if('faculty_note' in content.keys()):
+                faculty_note = content["faculty_note"]
 
             if(len(error) > 0):
                 return util.log_response({
@@ -43,24 +46,25 @@ def categorys():
 
             cur.execute("""
                 SELECT
-                    CONCAT('C',TO_CHAR(CURRENT_DATE,'YYMM'),LPAD(CAST(COALESCE(CAST(MAX(RIGHT(category_code,4)) AS INT)+1,1) AS VARCHAR),4,'0')) as category_code
+                    CONCAT('FAL',TO_CHAR(CURRENT_DATE,'YYMM'),LPAD(CAST(COALESCE(CAST(MAX(RIGHT(faculty_code,4)) AS INT)+1,1) AS VARCHAR),4,'0')) as faculty_code
                 FROM
-                    m_category
+                    m_faculty
                 WHERE
-                    category_code LIKE CONCAT('C',TO_CHAR(CURRENT_DATE,'YYMM'),'%')
+                    faculty_code LIKE CONCAT('FAL',TO_CHAR(CURRENT_DATE,'YYMM'),'%')
                 """)
             data = cur.fetchone()
-            category_code = data["category_code"]
+            faculty_code = data["faculty_code"]
             
             cur.execute("""
                 INSERT INTO
-                    m_category
+                    m_faculty
                 VALUES
-                    (%s, %s, %s, %s, %s, %s, %s, %s)
+                    (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                category_code, 
-                content['category_name'], 
-                category_note, 
+                faculty_code, 
+                content['university_code'],
+                content['faculty_name'], 
+                faculty_note, 
                 'Y', 
                 current_app.config['USER_CODE'], 
                 datetime.now(), 
@@ -80,9 +84,9 @@ def categorys():
                 "message": error.pgerror,
             }, 400, request.method)
 
-@bp.route("/category/<category_code>", methods=["GET", "PUT", "DELETE"])
+@bp.route("/faculty/<faculty_code>", methods=["GET", "PUT", "DELETE"])
 @token_required
-def category(category_code):
+def faculty(faculty_code):
     if(request.method == "GET"):
         try:
             conn = get_db_connection()
@@ -90,12 +94,12 @@ def category(category_code):
 
             cur.execute("""
                 SELECT *
-                FROM m_category
-                WHERE category_code = %s
-            """, (category_code,))
+                FROM m_faculty
+                WHERE faculty_code = %s
+            """, (faculty_code,))
 
             data = cur.fetchone()
-            return make_response(jsonify(categoryJson(data)))
+            return make_response(jsonify(facultyJson(data)))
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -109,12 +113,14 @@ def category(category_code):
             content = request.get_json()
 
             error = ""
-            if(not('category_name' in content.keys()) or len(content['category_name']) == 0):
-                error+="Nama Kategori Kosong! "
+            if(not('faculty_name' in content.keys()) or len(content['faculty_name']) == 0):
+                error+="Nama Fakultas Kosong! "
             
-            category_note = ""
-            if('category_note' in content.keys()):
-                category_note = content["category_note"]
+            faculty_note = ""
+            if('faculty_note' in content.keys()):
+                faculty_note = content["faculty_note"]
+            if(not('university_code' in content.keys()) or len(content['university_code']) == 0):
+                error+="Nama Universitas Tidak Boleh Kosong! "
 
             if(len(error) > 0):
                 return util.log_response({
@@ -124,22 +130,24 @@ def category(category_code):
 
             cur.execute("""
                 UPDATE
-                    m_category
+                    m_faculty
                 SET
-                    category_name = %s,
-                    category_note = %s,
+                    faculty_name = %s,
+                    university_code = %s
+                    faculty_note = %s,
                     is_active = %s,
                     update_by = %s,
                     update_date = %s
                 WHERE 
-                    category_code = %s
+                    faculty_code = %s
             """, (
-                content['category_name'], 
-                category_note, 
+                content['faculty_name'],
+                content['university_code'], 
+                faculty_note, 
                 'Y', 
                 current_app.config['USER_CODE'], 
                 datetime.now(), 
-                category_code,))
+                faculty_code,))
             conn.commit()
 
             dataUpdated = cur.fetchone()
@@ -168,11 +176,11 @@ def category(category_code):
 
             cur.execute("""
                 DELETE FROM
-                    m_category
+                    m_faculty
                 WHERE 
-                    category_code = %s
+                    faculty_code = %s
                 RETURNING *
-            """, (category_code,))
+            """, (faculty_code,))
             conn.commit()
 
             dataDeleted = cur.fetchone()
@@ -194,9 +202,9 @@ def category(category_code):
                 "message": error.pgerror,
             }), 400)
 
-@bp.route("/pagination_category", methods=["POST"])
+@bp.route("/pagination_faculty", methods=["POST"])
 @token_required
-def pagination_category():
+def pagination_faculty():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -209,7 +217,7 @@ def pagination_category():
                 SELECT
                     *
                 FROM
-                    m_category
+                    m_faculty
                 """ + util.sort(content) + """
                 LIMIT
                     """ + str(content['limit']) + """
@@ -221,7 +229,7 @@ def pagination_category():
                 SELECT
                     *
                 FROM
-                    m_category
+                    m_faculty
                 WHERE
                     (""" + util.filter(content) + """) """ + util.sort(content) + """
                 LIMIT
@@ -234,13 +242,13 @@ def pagination_category():
         cur.close()
         conn.close()
         
-        categorys = []
+        facultys = []
         for data in datas:
-            categorys.append(categoryJson(data))
+            facultys.append(facultyJson(data))
 
         return util.log_response(
         {
-            "data": categorys,
+            "data": facultys,
             "message": "success"
         }, 
         200, request.method)
