@@ -166,7 +166,7 @@ CREATE TABLE t_counseling  (
   scope_code varchar(40)  NOT NULL,
   category_code varchar(40)  NOT NULL,
   employee_code varchar(40)  NOT NULL,
-  consouling_date date NOT NULL,
+  counseling_date date NOT NULL,
   problem text  NOT NULL,
   conclusion text  NOT NULL,
   followup text  NOT NULL,

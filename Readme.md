@@ -16,15 +16,15 @@ Input(Body) :
 
 ```json
     {
-		"Student_code":,
-		"Scope_code":,
-		"Category_code":,
-    "Employee_code"	:,
-    "Counselling_date":,
-    "Problem":,
-    "Conclusion":,
-    "Followup":,
-    "Counselling_note":,
+      "student_code":,
+      "scope_code":,
+      "category_code":,
+      "employee_code"	:,
+      "counselling_date":,
+      "problem":,
+      "conclusion":,
+      "followup":,
+      "counselling_note":,
     }
 ```
 
@@ -458,5 +458,42 @@ CASE PERTAMA
   ],
   "limit": 10,
   "page": 1
+}
+```
+
+### PROVIDER API
+
+1. CREATE AND EDIT PROVIDER API
+
+CASE BERHASIL:
+
+A. TESCASE PERTAMA
+
+```json
+{
+  "student_code": "7283657",
+  "scope_code": "SC23090003",
+  "category_code": "C23090002",
+  "employee_code": "155275",
+  "counseling_date": "2023/09-15",
+  "problem": "Problem A",
+  "conclusion": "Conclusion A",
+  "followup": "Follow Up A",
+  "counseling_note": ""
+}
+```
+
+CASE GAGAL:
+
+```json
+{
+  "student_code": "7283657",
+  "scope_code": "SC23090003",
+  "category_code": "C23090002",
+  "employee_code": "155275",
+  "problem": "Problem A",
+  "conclusion": "Conclusion A",
+  "followup": "Follow Up A",
+  "counseling_note": ""
 }
 ```
