@@ -461,9 +461,9 @@ CASE PERTAMA
 }
 ```
 
-### PROVIDER API
+### COUNSELING API
 
-1. CREATE AND EDIT PROVIDER API
+1. CREATE AND EDIT COUNSELING API
 
 CASE BERHASIL:
 
@@ -475,7 +475,7 @@ A. TESCASE PERTAMA
   "scope_code": "SC23090003",
   "category_code": "C23090002",
   "employee_code": "155275",
-  "counseling_date": "2023/09-15",
+  "counseling_date": "2023/09/15",
   "problem": "Problem A",
   "conclusion": "Conclusion A",
   "followup": "Follow Up A",
@@ -495,5 +495,41 @@ CASE GAGAL:
   "conclusion": "Conclusion A",
   "followup": "Follow Up A",
   "counseling_note": ""
+}
+```
+
+### CONSULTATION API
+
+1. CREATE AND EDIT CONSULTATION API
+
+CASE BERHASIL:
+
+A. TESCASE PERTAMA
+
+```json
+{
+  "student_code": "542852856",
+  "scope_code": "SC23090003",
+  "employee_code": "421626",
+  "consultation_date": "2023/09/15",
+  "problem": "Problem B",
+  "conclusion": "Conclusion B",
+  "followup": "Follow Up B",
+  "consultation_note": ""
+}
+```
+
+CASE GAGAL:
+
+```json
+{
+  "student_code": "7283657",
+  "scope_code": "SC23090003",
+  "category_code": "C23090002",
+  "employee_code": "155275",
+  "problem": "Problem A",
+  "conclusion": "Conclusion A",
+  "followup": "Follow Up A",
+  "consultation_note": ""
 }
 ```

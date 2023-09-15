@@ -9,25 +9,24 @@ from .database import get_db_connection
 from . import util
 from .auth import token_required
 
-bp = Blueprint("counseling", __name__)
+bp = Blueprint("consultation", __name__)
 
-def counselingJson(item):
+def consultationJson(item):
     return {
-        "counseling_code"       : item["counseling_code"],
+        "consultation_code"     : item["consultation_code"],
         "student_code"          : item["student_code"],
         "scope_code"            : item["scope_code"],
-        "category_code"         : item["category_code"],
         "employee_code"         : item["employee_code"],
-        "counseling_date"       : item["counseling_date"],
+        "consultation_date"     : item["consultation_date"],
         "problem"               : item["problem"],
         "conclusion"            : item["conclusion"],
         "followup"              : item["followup"],
-        "counseling_note"       : item["counseling_note"]
+        "consultation_note"     : item["consultation_note"]
     }
 
-@bp.route("/counselings", methods=["POST"])
+@bp.route("/consultations", methods=["POST"])
 @token_required
-def counselings():
+def consultations():
     if(request.method == "POST"):
         try:
             conn = get_db_connection()
@@ -39,11 +38,9 @@ def counselings():
                 error+="Kode Siswa Tidak Boleh Kosong! "
             if(not('scope_code' in content.keys()) or len(content['scope_code']) == 0):
                 error+="Lingkup Masalah Tidak Boleh Kosong! "
-            if(not('category_code' in content.keys()) or len(content['category_code']) == 0):
-                error+="Kategori Masalah Tidak Boleh Kosong! "
             if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
                 error+="Kode Pegawai Tidak Boleh Kosong! "
-            if(not('counseling_date' in content.keys()) or len(content['counseling_date']) == 0):
+            if(not('consultation_date' in content.keys()) or len(content['consultation_date']) == 0):
                 error+="Tanggal Konseling Tidak Boleh Kosong! "
             if(not('problem' in content.keys()) or len(content['problem']) == 0):
                 error+="Masalah Tidak Boleh Kosong! "
@@ -54,9 +51,9 @@ def counselings():
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Nomor Telpon Tidak Boleh Kosong! "
             
-            counseling_note = ""
-            if('counseling_note' in content.keys()):
-                counseling_note = content["counseling_note"]
+            consultation_note = ""
+            if('consultation_note' in content.keys()):
+                consultation_note = content["consultation_note"]
 
             if(len(error) > 0):
                 return util.log_response({
@@ -66,31 +63,30 @@ def counselings():
 
             cur.execute("""
                 SELECT
-                    CONCAT('CON',TO_CHAR(CURRENT_DATE,'YYMM'),LPAD(CAST(COALESCE(CAST(MAX(RIGHT(counseling_code,4)) AS INT)+1,1) AS VARCHAR),4,'0')) as counseling_code
+                    CONCAT('CON',TO_CHAR(CURRENT_DATE,'YYMM'),LPAD(CAST(COALESCE(CAST(MAX(RIGHT(consultation_code,4)) AS INT)+1,1) AS VARCHAR),4,'0')) as consultation_code
                 FROM
-                    t_counseling
+                    t_consultation
                 WHERE
-                    counseling_code LIKE CONCAT('CON',TO_CHAR(CURRENT_DATE,'YYMM'),'%')
+                    consultation_code LIKE CONCAT('CON',TO_CHAR(CURRENT_DATE,'YYMM'),'%')
                 """)
             data = cur.fetchone()
-            counseling_code = data["counseling_code"]
+            consultation_code = data["consultation_code"]
             
             cur.execute("""
                 INSERT INTO
-                    t_counseling
+                    t_consultation
                 VALUES
-                    (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                counseling_code,
+                consultation_code,
                 content['student_code'],
                 content['scope_code'],
-                content['category_code'],
                 content['employee_code'],
-                content['counseling_date'],
+                content['consultation_date'],
                 content['problem'],
                 content['conclusion'],
                 content['followup'],
-                counseling_note,
+                consultation_note,
                 'Y', 
                 current_app.config['USER_CODE'], 
                 datetime.now(), 
@@ -110,9 +106,9 @@ def counselings():
                 "message": error.pgerror,
             }, 400, request.method)
 
-@bp.route("/counseling/<counseling_code>", methods=["GET", "PUT", "DELETE"])
+@bp.route("/consultation/<consultation_code>", methods=["GET", "PUT", "DELETE"])
 @token_required
-def counseling(counseling_code):
+def consultation(consultation_code):
     if(request.method == "GET"):
         try:
             conn = get_db_connection()
@@ -120,12 +116,12 @@ def counseling(counseling_code):
 
             cur.execute("""
                 SELECT *
-                FROM t_counseling
-                WHERE counseling_code = %s
-            """, (counseling_code,))
+                FROM t_consultation
+                WHERE consultation_code = %s
+            """, (consultation_code,))
 
             data = cur.fetchone()
-            return make_response(jsonify(counselingJson(data)))
+            return make_response(jsonify(consultationJson(data)))
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -143,11 +139,9 @@ def counseling(counseling_code):
                 error+="Kode Siswa Tidak Boleh Kosong! "
             if(not('scope_code' in content.keys()) or len(content['scope_code']) == 0):
                 error+="Lingkup Masalah Tidak Boleh Kosong! "
-            if(not('category_code' in content.keys()) or len(content['category_code']) == 0):
-                error+="Kategori Masalah Tidak Boleh Kosong! "
             if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
                 error+="Kode Pegawai Tidak Boleh Kosong! "
-            if(not('counseling_date' in content.keys()) or len(content['counseling_date']) == 0):
+            if(not('consultation_date' in content.keys()) or len(content['consultation_date']) == 0):
                 error+="Tanggal Konseling Tidak Boleh Kosong! "
             if(not('problem' in content.keys()) or len(content['problem']) == 0):
                 error+="Masalah Tidak Boleh Kosong! "
@@ -158,9 +152,9 @@ def counseling(counseling_code):
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Nomor Telpon Tidak Boleh Kosong! "
             
-            counseling_note = ""
-            if('counseling_note' in content.keys()):
-                counseling_note = content["counseling_note"]
+            consultation_note = ""
+            if('consultation_note' in content.keys()):
+                consultation_note = content["consultation_note"]
 
             if(len(error) > 0):
                 return util.log_response({
@@ -170,37 +164,35 @@ def counseling(counseling_code):
 
             cur.execute("""
                 UPDATE
-                    t_counseling
+                    t_consultation
                 SET
                     student_code = %s,
                     scope_code = %s,
-                    category_code = %s,
                     employee_code = %s,
-                    counseling_date = %s,
+                    consultation_date = %s,
                     problem = %s,
                     conclusion = %s,
                     followup = %s,
-                    counseling_note = %s,
+                    consultation_note = %s,
                     is_active = %s,
                     update_by = %s,
                     update_date = %s
                 WHERE 
-                    counseling_code = %s
+                    consultation_code = %s
                 RETURNING *
             """, (
                 content['student_code'],
                 content['scope_code'],
-                content['category_code'],
                 content['employee_code'],
-                content['counseling_date'],
+                content['consultation_date'],
                 content['problem'],
                 content['conclusion'],
                 content['followup'],
-                counseling_note,
+                consultation_note,
                 'Y', 
                 current_app.config['USER_CODE'], 
                 datetime.now(), 
-                counseling_code,))
+                consultation_code,))
             conn.commit()
 
             dataUpdated = cur.fetchone()
@@ -229,11 +221,11 @@ def counseling(counseling_code):
 
             cur.execute("""
                 DELETE FROM
-                    t_counseling
+                    t_consultation
                 WHERE 
-                    counseling_code = %s
+                    consultation_code = %s
                 RETURNING *
-            """, (counseling_code,))
+            """, (consultation_code,))
             conn.commit()
 
             dataDeleted = cur.fetchone()
@@ -255,9 +247,9 @@ def counseling(counseling_code):
                 "message": error.pgerror,
             }), 400)
 
-@bp.route("/pagination_counseling", methods=["POST"])
+@bp.route("/pagination_consultation", methods=["POST"])
 @token_required
-def pagination_counseling():
+def pagination_consultation():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -270,7 +262,7 @@ def pagination_counseling():
                 SELECT
                     *
                 FROM
-                    t_counseling
+                    t_consultation
                 """ + util.sort(content) + """
                 LIMIT
                     """ + str(content['limit']) + """
@@ -282,7 +274,7 @@ def pagination_counseling():
                 SELECT
                     *
                 FROM
-                    t_counseling
+                    t_consultation
                 WHERE
                     (""" + util.filter(content) + """) """ + util.sort(content) + """
                 LIMIT
@@ -295,13 +287,13 @@ def pagination_counseling():
         cur.close()
         conn.close()
         
-        counselings = []
+        consultations = []
         for data in datas:
-            counselings.append(counselingJson(data))
+            consultations.append(consultationJson(data))
 
         return util.log_response(
         {
-            "data": counselings,
+            "data": consultations,
             "message": "success"
         }, 
         200, request.method)
