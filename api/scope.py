@@ -133,6 +133,7 @@ def scope(scope_code):
                     update_date = %s
                 WHERE 
                     scope_code = %s
+                RETURNING *
             """, (
                 content['scope_name'], 
                 scope_note, 

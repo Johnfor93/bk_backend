@@ -133,6 +133,7 @@ def university(university_code):
                     update_date = %s
                 WHERE 
                     university_code = %s
+                RETURNING *
             """, (
                 content['university_name'], 
                 university_note, 

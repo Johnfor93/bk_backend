@@ -115,12 +115,12 @@ def faculty(faculty_code):
             error = ""
             if(not('faculty_name' in content.keys()) or len(content['faculty_name']) == 0):
                 error+="Nama Fakultas Kosong! "
+            if(not('university_code' in content.keys()) or len(content['university_code']) == 0):
+                error+="Nama Universitas Tidak Boleh Kosong! "
             
             faculty_note = ""
             if('faculty_note' in content.keys()):
                 faculty_note = content["faculty_note"]
-            if(not('university_code' in content.keys()) or len(content['university_code']) == 0):
-                error+="Nama Universitas Tidak Boleh Kosong! "
 
             if(len(error) > 0):
                 return util.log_response({
@@ -140,6 +140,7 @@ def faculty(faculty_code):
                     update_date = %s
                 WHERE 
                     faculty_code = %s
+                RETURNING *
             """, (
                 content['faculty_name'],
                 content['university_code'], 

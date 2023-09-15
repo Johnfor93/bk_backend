@@ -133,6 +133,7 @@ def category(category_code):
                     update_date = %s
                 WHERE 
                     category_code = %s
+                RETURNING *
             """, (
                 content['category_name'], 
                 category_note, 
@@ -145,6 +146,7 @@ def category(category_code):
             dataUpdated = cur.fetchone()
             cur.close()
             conn.close()
+            print("LEWAT")
             if(dataUpdated == None):
                 return util.log_response({
                     "success": False,
