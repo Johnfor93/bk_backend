@@ -395,3 +395,68 @@ CASE KEDUA
   "page": 1
 }
 ```
+
+### PROVIDER API
+
+1. CREATE AND EDIT PROVIDER API
+
+CASE BERHASIL:
+
+A. TESCASE PERTAMA
+
+```json
+{
+  "provider_name": "Dr. ABC",
+  "phone": "72465275",
+  "provider_note": "asssss"
+}
+```
+
+B. TESTCASE KEDUA
+
+```json
+{
+  "provider_name": "Dr. DEF",
+  "phone": "7214643"
+}
+```
+
+CASE GAGAL:
+
+TESTCASE PERTAMA
+
+```json
+{
+  "provider_note": "Provider yang ada notesnya"
+}
+```
+
+TESTCASE KEDUA
+
+```json
+{
+  "provider_name": "Provider baru test"
+}
+```
+
+2. Filter API
+
+CASE PERTAMA
+
+```json
+{
+  "filter_type": "AND",
+  "filters": [
+    {
+      "search": "provider_name",
+      "value": "S"
+    },
+    {
+      "search": "provider_code",
+      "value": "0002"
+    }
+  ],
+  "limit": 10,
+  "page": 1
+}
+```

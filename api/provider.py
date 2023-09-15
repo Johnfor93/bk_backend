@@ -9,19 +9,19 @@ from .database import get_db_connection
 from . import util
 from .auth import token_required
 
-bp = Blueprint("study_program", __name__)
+bp = Blueprint("provider", __name__)
 
-def study_programJson(item):
+def providerJson(item):
     return {
-        "study_program_code": item["study_program_code"],
-        "faculty_code": item["faculty_code"],
-        "study_program_name": item["study_program_name"],
-        "study_program_note": item["study_program_note"]
+        "provider_code": item["provider_code"],
+        "phone": item["phone"],
+        "provider_name": item["provider_name"],
+        "provider_note": item["provider_note"]
     }
 
-@bp.route("/study_programs", methods=["POST"])
+@bp.route("/providers", methods=["POST"])
 @token_required
-def study_programs():
+def providers():
     if(request.method == "POST"):
         try:
             conn = get_db_connection()
@@ -29,14 +29,14 @@ def study_programs():
             content = request.get_json()
 
             error = ""
-            if(not('study_program_name' in content.keys()) or len(content['study_program_name']) == 0):
-                error+="Nama Program Studi Kosong! "
-            if(not('faculty_code' in content.keys()) or len(content['faculty_code']) == 0):
-                error+="Nama Fakultas Tidak Boleh Kosong! "
+            if(not('provider_name' in content.keys()) or len(content['provider_name']) == 0):
+                error+="Nama Provider Kosong! "
+            if(not('phone' in content.keys()) or len(content['phone']) == 0):
+                error+="Nomor Telpon Tidak Boleh Kosong! "
             
-            study_program_note = ""
-            if('study_program_note' in content.keys()):
-                study_program_note = content["study_program_note"]
+            provider_note = ""
+            if('provider_note' in content.keys()):
+                provider_note = content["provider_note"]
 
             if(len(error) > 0):
                 return util.log_response({
@@ -46,25 +46,25 @@ def study_programs():
 
             cur.execute("""
                 SELECT
-                    CONCAT('SP',TO_CHAR(CURRENT_DATE,'YYMM'),LPAD(CAST(COALESCE(CAST(MAX(RIGHT(study_program_code,4)) AS INT)+1,1) AS VARCHAR),4,'0')) as study_program_code
+                    CONCAT('P',TO_CHAR(CURRENT_DATE,'YYMM'),LPAD(CAST(COALESCE(CAST(MAX(RIGHT(provider_code,4)) AS INT)+1,1) AS VARCHAR),4,'0')) as provider_code
                 FROM
-                    m_study_program
+                    m_provider
                 WHERE
-                    study_program_code LIKE CONCAT('SP',TO_CHAR(CURRENT_DATE,'YYMM'),'%')
+                    provider_code LIKE CONCAT('P',TO_CHAR(CURRENT_DATE,'YYMM'),'%')
                 """)
             data = cur.fetchone()
-            study_program_code = data["study_program_code"]
+            provider_code = data["provider_code"]
             
             cur.execute("""
                 INSERT INTO
-                    m_study_program
+                    m_provider
                 VALUES
                     (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                study_program_code, 
-                content['faculty_code'],
-                content['study_program_name'], 
-                study_program_note, 
+                provider_code, 
+                content['provider_name'], 
+                content['phone'],
+                provider_note, 
                 'Y', 
                 current_app.config['USER_CODE'], 
                 datetime.now(), 
@@ -84,9 +84,9 @@ def study_programs():
                 "message": error.pgerror,
             }, 400, request.method)
 
-@bp.route("/study_program/<study_program_code>", methods=["GET", "PUT", "DELETE"])
+@bp.route("/provider/<provider_code>", methods=["GET", "PUT", "DELETE"])
 @token_required
-def study_program(study_program_code):
+def provider(provider_code):
     if(request.method == "GET"):
         try:
             conn = get_db_connection()
@@ -94,12 +94,12 @@ def study_program(study_program_code):
 
             cur.execute("""
                 SELECT *
-                FROM m_study_program
-                WHERE study_program_code = %s
-            """, (study_program_code,))
+                FROM m_provider
+                WHERE provider_code = %s
+            """, (provider_code,))
 
             data = cur.fetchone()
-            return make_response(jsonify(study_programJson(data)))
+            return make_response(jsonify(providerJson(data)))
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -113,14 +113,14 @@ def study_program(study_program_code):
             content = request.get_json()
 
             error = ""
-            if(not('study_program_name' in content.keys()) or len(content['study_program_name']) == 0):
-                error+="Nama Program Studi Kosong! "
-            if(not('faculty_code' in content.keys()) or len(content['faculty_code']) == 0):
-                error+="Nama Fakultas Tidak Boleh Kosong! "
+            if(not('provider_name' in content.keys()) or len(content['provider_name']) == 0):
+                error+="Nama Provider Kosong! "
+            if(not('phone' in content.keys()) or len(content['phone']) == 0):
+                error+="Nomor Telpon Tidak Boleh Kosong! "
             
-            study_program_note = ""
-            if('study_program_note' in content.keys()):
-                study_program_note = content["study_program_note"]
+            provider_note = ""
+            if('provider_note' in content.keys()):
+                provider_note = content["provider_note"]
 
             if(len(error) > 0):
                 return util.log_response({
@@ -130,25 +130,25 @@ def study_program(study_program_code):
 
             cur.execute("""
                 UPDATE
-                    m_study_program
+                    m_provider
                 SET
-                    study_program_name = %s,
-                    faculty_code = %s,
-                    study_program_note = %s,
+                    provider_name = %s,
+                    phone = %s,
+                    provider_note = %s,
                     is_active = %s,
                     update_by = %s,
                     update_date = %s
                 WHERE 
-                    study_program_code = %s
+                    provider_code = %s
                 RETURNING *
             """, (
-                content['study_program_name'],
-                content['faculty_code'], 
-                study_program_note, 
+                content['provider_name'],
+                content['phone'], 
+                provider_note, 
                 'Y', 
                 current_app.config['USER_CODE'], 
                 datetime.now(), 
-                study_program_code,))
+                provider_code,))
             conn.commit()
 
             dataUpdated = cur.fetchone()
@@ -177,11 +177,11 @@ def study_program(study_program_code):
 
             cur.execute("""
                 DELETE FROM
-                    m_study_program
+                    m_provider
                 WHERE 
-                    study_program_code = %s
+                    provider_code = %s
                 RETURNING *
-            """, (study_program_code,))
+            """, (provider_code,))
             conn.commit()
 
             dataDeleted = cur.fetchone()
@@ -203,9 +203,9 @@ def study_program(study_program_code):
                 "message": error.pgerror,
             }), 400)
 
-@bp.route("/pagination_study_program", methods=["POST"])
+@bp.route("/pagination_provider", methods=["POST"])
 @token_required
-def pagination_study_program():
+def pagination_provider():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -218,7 +218,7 @@ def pagination_study_program():
                 SELECT
                     *
                 FROM
-                    m_study_program
+                    m_provider
                 """ + util.sort(content) + """
                 LIMIT
                     """ + str(content['limit']) + """
@@ -230,7 +230,7 @@ def pagination_study_program():
                 SELECT
                     *
                 FROM
-                    m_study_program
+                    m_provider
                 WHERE
                     (""" + util.filter(content) + """) """ + util.sort(content) + """
                 LIMIT
@@ -243,13 +243,13 @@ def pagination_study_program():
         cur.close()
         conn.close()
         
-        study_programs = []
+        providers = []
         for data in datas:
-            study_programs.append(study_programJson(data))
+            providers.append(providerJson(data))
 
         return util.log_response(
         {
-            "data": study_programs,
+            "data": providers,
             "message": "success"
         }, 
         200, request.method)
