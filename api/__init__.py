@@ -13,6 +13,7 @@ from . import counseling
 from . import consultation
 from . import visit
 from . import case_transfer
+from . import continuing_study
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -27,6 +28,7 @@ bp.register_blueprint(counseling.bp)
 bp.register_blueprint(consultation.bp)
 bp.register_blueprint(visit.bp)
 bp.register_blueprint(case_transfer.bp)
+bp.register_blueprint(continuing_study.bp)
 
 @bp.route("/")
 @auth.token_required

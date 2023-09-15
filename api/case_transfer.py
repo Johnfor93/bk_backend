@@ -115,6 +115,12 @@ def case_transfer(case_transfer_code):
             """, (case_transfer_code,))
 
             data = cur.fetchone()
+
+            if(data == None):
+                return make_response({
+                    "success": False,
+                    "message": "Data tidak ditemukan"
+                }, 404) 
             return make_response(jsonify(case_transferJson(data)))
         except psycopg2.Error as error:
             return make_response(jsonify({
@@ -190,7 +196,7 @@ def case_transfer(case_transfer_code):
                 return util.log_response({
                     "success": False,
                     "message": "Data tidak ditemukan"
-                }, 200, request.method) 
+                }, 404, request.method) 
 
             return util.log_response({
                 "success": True,
@@ -223,7 +229,7 @@ def case_transfer(case_transfer_code):
                 return util.log_response({
                     "success": False,
                     "message": "Data tidak ditemukan"
-                }, 200, request.method) 
+                }, 404, request.method) 
 
             return util.log_response({
                 "success": True,

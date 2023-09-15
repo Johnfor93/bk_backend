@@ -99,6 +99,12 @@ def faculty(faculty_code):
             """, (faculty_code,))
 
             data = cur.fetchone()
+
+            if(data == None):
+                return make_response({
+                    "success": False,
+                    "message": "Data tidak ditemukan"
+                }, 404) 
             return make_response(jsonify(facultyJson(data)))
         except psycopg2.Error as error:
             return make_response(jsonify({
@@ -158,7 +164,7 @@ def faculty(faculty_code):
                 return util.log_response({
                     "success": False,
                     "message": "Data tidak ditemukan"
-                }, 200, request.method) 
+                }, 404, request.method) 
 
             return util.log_response({
                 "success": True,
@@ -191,7 +197,7 @@ def faculty(faculty_code):
                 return util.log_response({
                     "success": False,
                     "message": "Data tidak ditemukan"
-                }, 200, request.method) 
+                }, 404, request.method) 
 
             return util.log_response({
                 "success": True,

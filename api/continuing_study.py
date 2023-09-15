@@ -9,18 +9,22 @@ from .database import get_db_connection
 from . import util
 from .auth import token_required
 
-bp = Blueprint("scope", __name__)
+bp = Blueprint("continuing_study", __name__)
 
-def scopeJson(item):
+def continuing_studyJson(item):
     return {
-        "scope_code": item["scope_code"],
-        "scope_name": item["scope_name"],
-        "scope_note": item["scope_note"]
+        "continuing_study_code"     : item["continuing_study_code"],
+        "student_code"          : item["student_code"],
+        "study_program_code"            : item["study_program_code"],
+        "employee_code"         : item["employee_code"],
+        "continuing_study_date"     : item["continuing_study_date"],
+        "result"            : item["result"],
+        "continuing_study_note"     : item["continuing_study_note"]
     }
 
-@bp.route("/scopes", methods=["POST"])
+@bp.route("/continuing_studys", methods=["POST"])
 @token_required
-def scopes():
+def continuing_studys():
     if(request.method == "POST"):
         try:
             conn = get_db_connection()
@@ -28,12 +32,20 @@ def scopes():
             content = request.get_json()
 
             error = ""
-            if(not('scope_name' in content.keys()) or len(content['scope_name']) == 0):
-                error+="Nama Batasan Kosong! "
+            if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
+                error+="Kode Siswa Tidak Boleh Kosong! "
+            if(not('study_program_code' in content.keys()) or len(content['study_program_code']) == 0):
+                error+="Program Studi Tidak Boleh Kosong! "
+            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
+                error+="Kode Pegawai Tidak Boleh Kosong! "
+            if(not('continuing_study_date' in content.keys()) or len(content['continuing_study_date']) == 0):
+                error+="Tanggal Konsultasi Tidak Boleh Kosong! "
+            if(not('result' in content.keys()) or len(content['result']) == 0):
+                error+="Hasil Tidak Boleh Kosong! "
             
-            scope_note = ""
-            if('scope_note' in content.keys()):
-                scope_note = content["scope_note"]
+            continuing_study_note = ""
+            if('continuing_study_note' in content.keys()):
+                continuing_study_note = content["continuing_study_note"]
 
             if(len(error) > 0):
                 return util.log_response({
@@ -43,24 +55,28 @@ def scopes():
 
             cur.execute("""
                 SELECT
-                    CONCAT('SC',TO_CHAR(CURRENT_DATE,'YYMM'),LPAD(CAST(COALESCE(CAST(MAX(RIGHT(scope_code,4)) AS INT)+1,1) AS VARCHAR),4,'0')) as scope_code
+                    CONCAT('CST',TO_CHAR(CURRENT_DATE,'YYMM'),LPAD(CAST(COALESCE(CAST(MAX(RIGHT(continuing_study_code,4)) AS INT)+1,1) AS VARCHAR),4,'0')) as continuing_study_code
                 FROM
-                    m_scope
+                    t_continuing_study
                 WHERE
-                    scope_code LIKE CONCAT('SC',TO_CHAR(CURRENT_DATE,'YYMM'),'%')
+                    continuing_study_code LIKE CONCAT('CST',TO_CHAR(CURRENT_DATE,'YYMM'),'%')
                 """)
             data = cur.fetchone()
-            scope_code = data["scope_code"]
+            continuing_study_code = data["continuing_study_code"]
             
             cur.execute("""
                 INSERT INTO
-                    m_scope
+                    t_continuing_study
                 VALUES
-                    (%s, %s, %s, %s, %s, %s, %s, %s)
+                    (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                scope_code, 
-                content['scope_name'], 
-                scope_note, 
+                continuing_study_code,
+                content['student_code'],
+                content['study_program_code'],
+                content['employee_code'],
+                content['continuing_study_date'],
+                content['result'],
+                continuing_study_note,
                 'Y', 
                 current_app.config['USER_CODE'], 
                 datetime.now(), 
@@ -80,9 +96,9 @@ def scopes():
                 "message": error.pgerror,
             }, 400, request.method)
 
-@bp.route("/scope/<scope_code>", methods=["GET", "PUT", "DELETE"])
+@bp.route("/continuing_study/<continuing_study_code>", methods=["GET", "PUT", "DELETE"])
 @token_required
-def scope(scope_code):
+def continuing_study(continuing_study_code):
     if(request.method == "GET"):
         try:
             conn = get_db_connection()
@@ -90,18 +106,17 @@ def scope(scope_code):
 
             cur.execute("""
                 SELECT *
-                FROM m_scope
-                WHERE scope_code = %s
-            """, (scope_code,))
+                FROM t_continuing_study
+                WHERE continuing_study_code = %s
+            """, (continuing_study_code,))
 
             data = cur.fetchone()
-
             if(data == None):
                 return make_response({
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404) 
-            return make_response(jsonify(scopeJson(data)))
+            return make_response(jsonify(continuing_studyJson(data)))
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -115,12 +130,20 @@ def scope(scope_code):
             content = request.get_json()
 
             error = ""
-            if(not('scope_name' in content.keys()) or len(content['scope_name']) == 0):
-                error+="Nama Batasan Kosong! "
+            if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
+                error+="Kode Siswa Tidak Boleh Kosong! "
+            if(not('study_program_code' in content.keys()) or len(content['study_program_code']) == 0):
+                error+="Program Studi Tidak Boleh Kosong! "
+            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
+                error+="Kode Pegawai Tidak Boleh Kosong! "
+            if(not('continuing_study_date' in content.keys()) or len(content['continuing_study_date']) == 0):
+                error+="Tanggal Konsultasi Tidak Boleh Kosong! "
+            if(not('result' in content.keys()) or len(content['result']) == 0):
+                error+="Konklusi Tidak Boleh Kosong! "
             
-            scope_note = ""
-            if('scope_note' in content.keys()):
-                scope_note = content["scope_note"]
+            continuing_study_note = ""
+            if('continuing_study_note' in content.keys()):
+                continuing_study_note = content["continuing_study_note"]
 
             if(len(error) > 0):
                 return util.log_response({
@@ -130,23 +153,31 @@ def scope(scope_code):
 
             cur.execute("""
                 UPDATE
-                    m_scope
+                    t_continuing_study
                 SET
-                    scope_name = %s,
-                    scope_note = %s,
+                    student_code = %s,
+                    study_program_code = %s,
+                    employee_code = %s,
+                    continuing_study_date = %s,
+                    result = %s,
+                    continuing_study_note = %s,
                     is_active = %s,
                     update_by = %s,
                     update_date = %s
                 WHERE 
-                    scope_code = %s
+                    continuing_study_code = %s
                 RETURNING *
             """, (
-                content['scope_name'], 
-                scope_note, 
+                content['student_code'],
+                content['study_program_code'],
+                content['employee_code'],
+                content['continuing_study_date'],
+                content['result'],
+                continuing_study_note,
                 'Y', 
                 current_app.config['USER_CODE'], 
                 datetime.now(), 
-                scope_code,))
+                continuing_study_code,))
             conn.commit()
 
             dataUpdated = cur.fetchone()
@@ -175,11 +206,11 @@ def scope(scope_code):
 
             cur.execute("""
                 DELETE FROM
-                    m_scope
+                    t_continuing_study
                 WHERE 
-                    scope_code = %s
+                    continuing_study_code = %s
                 RETURNING *
-            """, (scope_code,))
+            """, (continuing_study_code,))
             conn.commit()
 
             dataDeleted = cur.fetchone()
@@ -201,9 +232,9 @@ def scope(scope_code):
                 "message": error.pgerror,
             }), 400)
 
-@bp.route("/pagination_scope", methods=["POST"])
+@bp.route("/pagination_continuing_study", methods=["POST"])
 @token_required
-def pagination_scope():
+def pagination_continuing_study():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -216,7 +247,7 @@ def pagination_scope():
                 SELECT
                     *
                 FROM
-                    m_scope
+                    t_continuing_study
                 """ + util.sort(content) + """
                 LIMIT
                     """ + str(content['limit']) + """
@@ -228,7 +259,7 @@ def pagination_scope():
                 SELECT
                     *
                 FROM
-                    m_scope
+                    t_continuing_study
                 WHERE
                     (""" + util.filter(content) + """) """ + util.sort(content) + """
                 LIMIT
@@ -241,13 +272,13 @@ def pagination_scope():
         cur.close()
         conn.close()
         
-        scopes = []
+        continuing_studys = []
         for data in datas:
-            scopes.append(scopeJson(data))
+            continuing_studys.append(continuing_studyJson(data))
 
         return util.log_response(
         {
-            "data": scopes,
+            "data": continuing_studys,
             "message": "success"
         }, 
         200, request.method)
