@@ -17,3 +17,4 @@ build/
 
 # Development only
 flaskrun.sh
+gitscript.sh
