@@ -133,7 +133,7 @@ def faculty(faculty_code):
                     m_faculty
                 SET
                     faculty_name = %s,
-                    university_code = %s
+                    university_code = %s,
                     faculty_note = %s,
                     is_active = %s,
                     update_by = %s,

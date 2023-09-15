@@ -226,3 +226,84 @@ TESTCASE KEDUA
   "page": 1
 }
 ```
+
+### FACULTY API
+
+1. CREATE AND EDIT FACULTY API
+
+CASE BERHASIL:
+
+A. TESCASE PERTAMA
+
+```json
+{
+  "faculty_name": "Faculty baru test",
+  "university_code": "UNV23090002",
+  "faculty_note": "Faculty yang ada notesnya"
+}
+```
+
+B. TESTCASE KEDUA
+
+```json
+{
+  "faculty_name": "Faculty baru test",
+  "university_code": "UNV23090002"
+}
+```
+
+CASE GAGAL:
+
+TESTCASE PERTAMA
+
+```json
+{
+  "faculty_note": "Faculty yang ada notesnya"
+}
+```
+
+TESTCASE KEDUA
+
+```json
+{
+  "faculty_name": "Faculty baru test"
+}
+```
+
+2. Filter API
+
+CASE PERTAMA
+
+```json
+{
+  "filter_type": "AND",
+  "filters": [
+    {
+      "search": "faculty_name",
+      "value": "S"
+    },
+    {
+      "search": "faculty_code",
+      "value": "0002"
+    }
+  ],
+  "limit": 10,
+  "page": 1
+}
+```
+
+CASE KEDUA
+
+```json
+{
+  "filter_type": "OR",
+  "filters": [
+    {
+      "search": "university_code",
+      "value": "UNV23090002"
+    }
+  ],
+  "limit": 10,
+  "page": 1
+}
+```
