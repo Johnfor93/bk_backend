@@ -307,3 +307,91 @@ CASE KEDUA
   "page": 1
 }
 ```
+
+### FACULTY API
+
+1. CREATE AND EDIT FACULTY API
+
+CASE BERHASIL:
+
+A. TESCASE PERTAMA
+
+```json
+{
+  "study_program_name": "Teknik Informatika",
+  "faculty_code": "FAL23090002",
+  "study_program_note": "Teknik Informatika"
+}
+```
+
+B. TESTCASE KEDUA
+
+```json
+{
+  "study_program_name": "Matematika Murni",
+  "faculty_code": "FAL23090003"
+}
+```
+
+```json
+{
+  "study_program_name": "Fisika",
+  "faculty_code": "FAL23090003"
+}
+```
+
+CASE GAGAL:
+
+TESTCASE PERTAMA
+
+```json
+{
+  "study_program_note": "Faculty yang ada notesnya"
+}
+```
+
+TESTCASE KEDUA
+
+```json
+{
+  "study_program_name": "Faculty baru test"
+}
+```
+
+2. Filter API
+
+CASE PERTAMA
+
+```json
+{
+  "filter_type": "AND",
+  "filters": [
+    {
+      "search": "study_program_name",
+      "value": "S"
+    },
+    {
+      "search": "study_program_code",
+      "value": "0002"
+    }
+  ],
+  "limit": 10,
+  "page": 1
+}
+```
+
+CASE KEDUA
+
+```json
+{
+  "filter_type": "OR",
+  "filters": [
+    {
+      "search": "faculty_code",
+      "value": "UNV23090002"
+    }
+  ],
+  "limit": 10,
+  "page": 1
+}
+```
