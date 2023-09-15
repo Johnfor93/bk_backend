@@ -11,6 +11,7 @@ from . import study_program
 from . import provider
 from . import counseling
 from . import consultation
+from . import visit
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -23,6 +24,7 @@ bp.register_blueprint(study_program.bp)
 bp.register_blueprint(provider.bp)
 bp.register_blueprint(counseling.bp)
 bp.register_blueprint(consultation.bp)
+bp.register_blueprint(visit.bp)
 
 @bp.route("/")
 @auth.token_required

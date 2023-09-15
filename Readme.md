@@ -533,3 +533,38 @@ CASE GAGAL:
   "consultation_note": ""
 }
 ```
+
+### VISIT API
+
+1. CREATE AND EDIT VISIT API
+
+CASE BERHASIL:
+
+A. TESCASE PERTAMA
+
+```json
+{
+  "student_code": "542852856",
+  "employee_code": "421626",
+  "visit_date": "2023/09/15",
+  "reason": "Problem B",
+  "result": "Conclusion B",
+  "followup": "Follow Up B",
+  "visit_note": ""
+}
+```
+
+CASE GAGAL:
+
+```json
+{
+  "student_code": "7283657",
+  "scope_code": "SC23090003",
+  "category_code": "C23090002",
+  "employee_code": "155275",
+  "problem": "Problem A",
+  "conclusion": "Conclusion A",
+  "followup": "Follow Up A",
+  "visit_note": ""
+}
+```

@@ -9,24 +9,23 @@ from .database import get_db_connection
 from . import util
 from .auth import token_required
 
-bp = Blueprint("consultation", __name__)
+bp = Blueprint("visit", __name__)
 
-def consultationJson(item):
+def visitJson(item):
     return {
-        "consultation_code"     : item["consultation_code"],
-        "student_code"          : item["student_code"],
-        "scope_code"            : item["scope_code"],
-        "employee_code"         : item["employee_code"],
-        "consultation_date"     : item["consultation_date"],
-        "problem"               : item["problem"],
-        "conclusion"            : item["conclusion"],
-        "followup"              : item["followup"],
-        "consultation_note"     : item["consultation_note"]
+        "visit_code"     : item["visit_code"],
+        "student_code"   : item["student_code"],
+        "employee_code"  : item["employee_code"],
+        "visit_date"     : item["visit_date"],
+        "reason"         : item["reason"],
+        "result"         : item["result"],
+        "followup"       : item["followup"],
+        "visit_note"     : item["visit_note"]
     }
 
-@bp.route("/consultations", methods=["POST"])
+@bp.route("/visits", methods=["POST"])
 @token_required
-def consultations():
+def visits():
     if(request.method == "POST"):
         try:
             conn = get_db_connection()
@@ -36,22 +35,20 @@ def consultations():
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Kode Siswa Tidak Boleh Kosong! "
-            if(not('scope_code' in content.keys()) or len(content['scope_code']) == 0):
-                error+="Lingkup Masalah Tidak Boleh Kosong! "
             if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
                 error+="Kode Pegawai Tidak Boleh Kosong! "
-            if(not('consultation_date' in content.keys()) or len(content['consultation_date']) == 0):
+            if(not('visit_date' in content.keys()) or len(content['visit_date']) == 0):
                 error+="Tanggal Konsultasi Tidak Boleh Kosong! "
-            if(not('problem' in content.keys()) or len(content['problem']) == 0):
-                error+="Masalah Tidak Boleh Kosong! "
-            if(not('conclusion' in content.keys()) or len(content['conclusion']) == 0):
-                error+="Masalah Tidak Boleh Kosong! "
+            if(not('reason' in content.keys()) or len(content['reason']) == 0):
+                error+="Alasan Tidak Boleh Kosong! "
+            if(not('result' in content.keys()) or len(content['result']) == 0):
+                error+="Hasil Tidak Boleh Kosong! "
             if(not('followup' in content.keys()) or len(content['followup']) == 0):
                 error+="Tindakan Lebih Lanjut Tidak Boleh Kosong! "
             
-            consultation_note = ""
-            if('consultation_note' in content.keys()):
-                consultation_note = content["consultation_note"]
+            visit_note = ""
+            if('visit_note' in content.keys()):
+                visit_note = content["visit_note"]
 
             if(len(error) > 0):
                 return util.log_response({
@@ -61,30 +58,29 @@ def consultations():
 
             cur.execute("""
                 SELECT
-                    CONCAT('CON',TO_CHAR(CURRENT_DATE,'YYMM'),LPAD(CAST(COALESCE(CAST(MAX(RIGHT(consultation_code,4)) AS INT)+1,1) AS VARCHAR),4,'0')) as consultation_code
+                    CONCAT('VST',TO_CHAR(CURRENT_DATE,'YYMM'),LPAD(CAST(COALESCE(CAST(MAX(RIGHT(visit_code,4)) AS INT)+1,1) AS VARCHAR),4,'0')) as visit_code
                 FROM
-                    t_consultation
+                    t_visit
                 WHERE
-                    consultation_code LIKE CONCAT('CON',TO_CHAR(CURRENT_DATE,'YYMM'),'%')
+                    visit_code LIKE CONCAT('VST',TO_CHAR(CURRENT_DATE,'YYMM'),'%')
                 """)
             data = cur.fetchone()
-            consultation_code = data["consultation_code"]
+            visit_code = data["visit_code"]
             
             cur.execute("""
                 INSERT INTO
-                    t_consultation
+                    t_visit
                 VALUES
-                    (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                consultation_code,
+                visit_code,
                 content['student_code'],
-                content['scope_code'],
                 content['employee_code'],
-                content['consultation_date'],
-                content['problem'],
-                content['conclusion'],
+                content['visit_date'],
+                content['reason'],
+                content['result'],
                 content['followup'],
-                consultation_note,
+                visit_note,
                 'Y', 
                 current_app.config['USER_CODE'], 
                 datetime.now(), 
@@ -104,9 +100,9 @@ def consultations():
                 "message": error.pgerror,
             }, 400, request.method)
 
-@bp.route("/consultation/<consultation_code>", methods=["GET", "PUT", "DELETE"])
+@bp.route("/visit/<visit_code>", methods=["GET", "PUT", "DELETE"])
 @token_required
-def consultation(consultation_code):
+def visit(visit_code):
     if(request.method == "GET"):
         try:
             conn = get_db_connection()
@@ -114,12 +110,12 @@ def consultation(consultation_code):
 
             cur.execute("""
                 SELECT *
-                FROM t_consultation
-                WHERE consultation_code = %s
-            """, (consultation_code,))
+                FROM t_visit
+                WHERE visit_code = %s
+            """, (visit_code,))
 
             data = cur.fetchone()
-            return make_response(jsonify(consultationJson(data)))
+            return make_response(jsonify(visitJson(data)))
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -135,22 +131,20 @@ def consultation(consultation_code):
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Kode Siswa Tidak Boleh Kosong! "
-            if(not('scope_code' in content.keys()) or len(content['scope_code']) == 0):
-                error+="Lingkup Masalah Tidak Boleh Kosong! "
             if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
                 error+="Kode Pegawai Tidak Boleh Kosong! "
-            if(not('consultation_date' in content.keys()) or len(content['consultation_date']) == 0):
+            if(not('visit_date' in content.keys()) or len(content['visit_date']) == 0):
                 error+="Tanggal Konsultasi Tidak Boleh Kosong! "
-            if(not('problem' in content.keys()) or len(content['problem']) == 0):
-                error+="Masalah Tidak Boleh Kosong! "
-            if(not('conclusion' in content.keys()) or len(content['conclusion']) == 0):
-                error+="Konklusi Tidak Boleh Kosong! "
+            if(not('reason' in content.keys()) or len(content['reason']) == 0):
+                error+="Alasan Tidak Boleh Kosong! "
+            if(not('result' in content.keys()) or len(content['result']) == 0):
+                error+="Hasil Tidak Boleh Kosong! "
             if(not('followup' in content.keys()) or len(content['followup']) == 0):
                 error+="Tindakan Lebih Lanjut Tidak Boleh Kosong! "
             
-            consultation_note = ""
-            if('consultation_note' in content.keys()):
-                consultation_note = content["consultation_note"]
+            visit_note = ""
+            if('visit_note' in content.keys()):
+                visit_note = content["visit_note"]
 
             if(len(error) > 0):
                 return util.log_response({
@@ -160,35 +154,33 @@ def consultation(consultation_code):
 
             cur.execute("""
                 UPDATE
-                    t_consultation
+                    t_visit
                 SET
                     student_code = %s,
-                    scope_code = %s,
                     employee_code = %s,
-                    consultation_date = %s,
-                    problem = %s,
-                    conclusion = %s,
+                    visit_date = %s,
+                    reason = %s,
+                    result = %s,
                     followup = %s,
-                    consultation_note = %s,
+                    visit_note = %s,
                     is_active = %s,
                     update_by = %s,
                     update_date = %s
                 WHERE 
-                    consultation_code = %s
+                    visit_code = %s
                 RETURNING *
             """, (
                 content['student_code'],
-                content['scope_code'],
                 content['employee_code'],
-                content['consultation_date'],
-                content['problem'],
-                content['conclusion'],
+                content['visit_date'],
+                content['reason'],
+                content['result'],
                 content['followup'],
-                consultation_note,
+                visit_note,
                 'Y', 
                 current_app.config['USER_CODE'], 
                 datetime.now(), 
-                consultation_code,))
+                visit_code,))
             conn.commit()
 
             dataUpdated = cur.fetchone()
@@ -217,11 +209,11 @@ def consultation(consultation_code):
 
             cur.execute("""
                 DELETE FROM
-                    t_consultation
+                    t_visit
                 WHERE 
-                    consultation_code = %s
+                    visit_code = %s
                 RETURNING *
-            """, (consultation_code,))
+            """, (visit_code,))
             conn.commit()
 
             dataDeleted = cur.fetchone()
@@ -243,9 +235,9 @@ def consultation(consultation_code):
                 "message": error.pgerror,
             }), 400)
 
-@bp.route("/pagination_consultation", methods=["POST"])
+@bp.route("/pagination_visit", methods=["POST"])
 @token_required
-def pagination_consultation():
+def pagination_visit():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -258,7 +250,7 @@ def pagination_consultation():
                 SELECT
                     *
                 FROM
-                    t_consultation
+                    t_visit
                 """ + util.sort(content) + """
                 LIMIT
                     """ + str(content['limit']) + """
@@ -270,7 +262,7 @@ def pagination_consultation():
                 SELECT
                     *
                 FROM
-                    t_consultation
+                    t_visit
                 WHERE
                     (""" + util.filter(content) + """) """ + util.sort(content) + """
                 LIMIT
@@ -283,13 +275,13 @@ def pagination_consultation():
         cur.close()
         conn.close()
         
-        consultations = []
+        visits = []
         for data in datas:
-            consultations.append(consultationJson(data))
+            visits.append(visitJson(data))
 
         return util.log_response(
         {
-            "data": consultations,
+            "data": visits,
             "message": "success"
         }, 
         200, request.method)
