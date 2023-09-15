@@ -568,3 +568,38 @@ CASE GAGAL:
   "visit_note": ""
 }
 ```
+
+### CASE TRANSFER API
+
+1. CREATE AND EDIT CASE TRANSFER API
+
+CASE BERHASIL:
+
+A. TESCASE PERTAMA
+
+```json
+{
+  "student_code": "542852856",
+  "provider_code": "P23090002",
+  "employee_code": "421626",
+  "case_transfer_date": "2023/09/15",
+  "result": "Conclusion B",
+  "followup": "Follow Up B",
+  "case_transfer_note": ""
+}
+```
+
+CASE GAGAL:
+
+```json
+{
+  "student_code": "7283657",
+  "scope_code": "SC23090003",
+  "category_code": "C23090002",
+  "employee_code": "155275",
+  "problem": "Problem A",
+  "conclusion": "Conclusion A",
+  "followup": "Follow Up A",
+  "case_transfer_note": ""
+}
+```
