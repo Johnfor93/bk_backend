@@ -2,6 +2,7 @@ from flask import (
     request, Blueprint, current_app, make_response, jsonify
     )
 from datetime import datetime
+import time
 
 import psycopg2
 
@@ -23,6 +24,16 @@ def counselingJson(item):
         "conclusion"            : item["conclusion"],
         "followup"              : item["followup"],
         "counseling_note"       : item["counseling_note"]
+    }
+
+def counselingPagingFormatJSON(item):
+    return {
+        "counseling_code"       : item["counseling_code"],
+        "student_code"          : item["student_code"],
+        "scope_name"            : item["scope_name"],
+        "category_name"         : item["category_name"],
+        "counseling_date"       : item["counseling_date"],
+        "problem"               : item["problem"]
     }
 
 @bp.route("/counselings", methods=["POST"])
@@ -62,6 +73,19 @@ def counselings():
                 return util.log_response({
                     "success": False,
                     "message": "Data tidak lengkap! " + error,
+                }, 400, request.method)
+
+            date_format = "%Y-%m-%d"
+            now = datetime.now()
+            dateNow = now.strftime("%Y-%m-%d")
+            date1 = time.mktime(time.strptime(content['counseling_date'], date_format))
+            date2 = time.mktime(time.strptime(dateNow, date_format))
+
+            delta = date2 - date1
+            if int(delta / 86400) > 14:
+                return util.log_response({
+                    "success": False,
+                    "message": "Sudah lebih dari 14 hari untuk melakukan input",
                 }, 400, request.method)
 
             cur.execute("""
@@ -163,6 +187,8 @@ def counseling(counseling_code):
                 error+="Tindakan Lebih Lanjut Tidak Boleh Kosong! "
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Nomor Telpon Tidak Boleh Kosong! "
+            if(not('created_at' in content.keys()) or len(content['created_at']) == 0):
+                error+="Tanggal Dibuat tidak ditemukan! "
             
             counseling_note = ""
             if('counseling_note' in content.keys()):
@@ -172,6 +198,19 @@ def counseling(counseling_code):
                 return util.log_response({
                     "success": False,
                     "message": "Data tidak lengkap! " + error,
+                }, 400, request.method)
+
+            date_format = "%Y-%m-%d"
+            now = datetime.now()
+            dateNow = now.strftime("%Y-%m-%d")
+            date1 = time.mktime(time.strptime(content['created_at'], date_format))
+            date2 = time.mktime(time.strptime(dateNow, date_format))
+
+            delta = date2 - date1
+            if int(delta / 86400) > 14:
+                return util.log_response({
+                    "success": False,
+                    "message": "Sudah lebih dari 14 hari untuk melakukan update",
                 }, 400, request.method)
 
             cur.execute("""
@@ -274,9 +313,16 @@ def pagination_counseling():
         if(filter==''):
             sql = """
                 SELECT
-                    *
+                    counseling_code,
+                    student_code,
+                    scope_name,
+                    category_name,
+                    counseling_date,
+                    problem
                 FROM
                     t_counseling
+                    INNER JOIN m_scope ON t_counseling.scope_code = m_scope.scope_code
+                    INNER JOIN m_category ON t_counseling.category_code = m_category.category_code
                 """ + util.sort(content) + """
                 LIMIT
                     """ + str(content['limit']) + """
@@ -286,9 +332,16 @@ def pagination_counseling():
         else:
             sql = """
                 SELECT
-                    *
+                    counseling_code,
+                    student_code,
+                    scope_name,
+                    category_name,
+                    counseling_date,
+                    problem
                 FROM
                     t_counseling
+                    INNER JOIN m_scope ON t_counseling.scope_code = m_scope.scope_code
+                    INNER JOIN m_category ON t_counseling.category_code = m_category.category_code
                 WHERE
                     (""" + util.filter(content) + """) """ + util.sort(content) + """
                 LIMIT
@@ -303,7 +356,7 @@ def pagination_counseling():
         
         counselings = []
         for data in datas:
-            counselings.append(counselingJson(data))
+            counselings.append(counselingPagingFormatJSON(data))
 
         return util.log_response(
         {

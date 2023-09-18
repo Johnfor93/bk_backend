@@ -2,6 +2,7 @@ from flask import (
     request, Blueprint, current_app, make_response, jsonify
     )
 from datetime import datetime
+import time
 
 import psycopg2
 
@@ -66,6 +67,19 @@ def visits():
                 """)
             data = cur.fetchone()
             visit_code = data["visit_code"]
+
+            date_format = "%Y-%m-%d"
+            now = datetime.now()
+            dateNow = now.strftime("%Y-%m-%d")
+            date1 = time.mktime(time.strptime(content['visit_date'], date_format))
+            date2 = time.mktime(time.strptime(dateNow, date_format))
+
+            delta = date2 - date1
+            if int(delta / 86400) > 14:
+                return util.log_response({
+                    "success": False,
+                    "message": "Sudah lebih dari 14 hari untuk melakukan input",
+                }, 400, request.method)
             
             cur.execute("""
                 INSERT INTO
@@ -157,6 +171,20 @@ def visit(visit_code):
                     "success": False,
                     "message": "Data tidak lengkap! " + error,
                 }, 400, request.method)
+
+            date_format = "%Y-%m-%d"
+            now = datetime.now()
+            dateNow = now.strftime("%Y-%m-%d")
+            date1 = time.mktime(time.strptime(content['created_at'], date_format))
+            date2 = time.mktime(time.strptime(dateNow, date_format))
+
+            delta = date2 - date1
+            if int(delta / 86400) > 14:
+                return util.log_response({
+                    "success": False,
+                    "message": "Sudah lebih dari 14 hari untuk melakukan update",
+                }, 400, request.method)
+
 
             cur.execute("""
                 UPDATE

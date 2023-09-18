@@ -1,39 +1,12 @@
 # API DESIGN
 
-### Konseling
-
-1. Create
-   Header :
-
-```
-   {
-    Token, Content(Application/json)
-    Params : -
-   }
-```
-
-Input(Body) :
-
-```json
-    {
-      "student_code":,
-      "scope_code":,
-      "category_code":,
-      "employee_code"	:,
-      "counselling_date":,
-      "problem":,
-      "conclusion":,
-      "followup":,
-      "counselling_note":,
-    }
-```
-
 Output(Response) :
 Jika success
 
 ```json
 {
-  "success": true
+  "success": true,
+  "data": // Jika ada data yang perlu ditampilkan
 }
 ```
 
@@ -45,8 +18,6 @@ Jika success
       "message": error
     }
 ```
-
-2. Edit 3. Delete 4. Paging 5. Select One(?)
 
 ## TESTCASE API
 
@@ -483,6 +454,22 @@ A. TESCASE PERTAMA
 }
 ```
 
+```json
+{
+  "category_code": "C23090002",
+  "conclusion": "Conclusion A",
+  "counseling_code": "CON23090001",
+  "counseling_date": "2023-09-12",
+  "counseling_note": "",
+  "employee_code": "155275",
+  "followup": "Follow Up A",
+  "problem": "Problem A",
+  "scope_code": "SC23090003",
+  "student_code": "7283657",
+  "created_at": "2023-09-01"
+}
+```
+
 CASE GAGAL:
 
 ```json
@@ -495,6 +482,24 @@ CASE GAGAL:
   "conclusion": "Conclusion A",
   "followup": "Follow Up A",
   "counseling_note": ""
+}
+```
+
+<!-- Edit GAGAL -->
+
+```json
+{
+  "category_code": "C23090002",
+  "conclusion": "Conclusion A",
+  "counseling_code": "CON23090001",
+  "counseling_date": "2023-09-12",
+  "counseling_note": "",
+  "employee_code": "155275",
+  "followup": "Follow Up A",
+  "problem": "Problem A",
+  "scope_code": "SC23090003",
+  "student_code": "7283657",
+  "created_at": "2023-09-01"
 }
 ```
 
