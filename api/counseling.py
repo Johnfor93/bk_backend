@@ -1,8 +1,10 @@
 from flask import (
-    request, Blueprint, current_app, make_response, jsonify
+    request, Blueprint, current_app, make_response, jsonify, send_file
     )
 from datetime import datetime
 import time
+import os
+import os.path
 
 import psycopg2
 
@@ -43,7 +45,8 @@ def counselings():
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
+            uploaded_file = request.files
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
@@ -52,8 +55,6 @@ def counselings():
                 error+="Lingkup Masalah Tidak Boleh Kosong! "
             if(not('category_code' in content.keys()) or len(content['category_code']) == 0):
                 error+="Kategori Masalah Tidak Boleh Kosong! "
-            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
-                error+="Kode Pegawai Tidak Boleh Kosong! "
             if(not('counseling_date' in content.keys()) or len(content['counseling_date']) == 0):
                 error+="Tanggal Konseling Tidak Boleh Kosong! "
             if(not('problem' in content.keys()) or len(content['problem']) == 0):
@@ -104,12 +105,13 @@ def counselings():
                     t_counseling
                 VALUES
                     (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING counseling_code
             """, (
                 counseling_code,
                 content['student_code'],
                 content['scope_code'],
                 content['category_code'],
-                content['employee_code'],
+                current_app.config['USER_CODE'], 
                 content['counseling_date'],
                 content['problem'],
                 content['conclusion'],
@@ -122,8 +124,15 @@ def counselings():
                 datetime.now())
             )
             conn.commit()
+            inserted_id = cur.fetchone()
             cur.close()
             conn.close()
+
+            if(len(uploaded_file['attachment'].filename) != 0):
+                uploaded_file = uploaded_file['attachment']
+                uploaded_filename = inserted_id["counseling_code"] + '.' + uploaded_file.filename.split('.')[-1] 
+                uploaded_file.save(os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], uploaded_filename))
+
             return util.log_response({
                 "success": True,
                 "message": "Data sudah dimasukkan"
@@ -155,7 +164,9 @@ def counseling(counseling_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404) 
-            return make_response(jsonify(counselingJson(data)))
+            return make_response(jsonify({
+                "data":counselingJson(data),
+                "success": True}), 200)
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -166,7 +177,8 @@ def counseling(counseling_code):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
+            uploaded_file = request.files
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
@@ -175,8 +187,6 @@ def counseling(counseling_code):
                 error+="Lingkup Masalah Tidak Boleh Kosong! "
             if(not('category_code' in content.keys()) or len(content['category_code']) == 0):
                 error+="Kategori Masalah Tidak Boleh Kosong! "
-            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
-                error+="Kode Pegawai Tidak Boleh Kosong! "
             if(not('counseling_date' in content.keys()) or len(content['counseling_date']) == 0):
                 error+="Tanggal Konseling Tidak Boleh Kosong! "
             if(not('problem' in content.keys()) or len(content['problem']) == 0):
@@ -220,7 +230,6 @@ def counseling(counseling_code):
                     student_code = %s,
                     scope_code = %s,
                     category_code = %s,
-                    employee_code = %s,
                     counseling_date = %s,
                     problem = %s,
                     conclusion = %s,
@@ -231,12 +240,11 @@ def counseling(counseling_code):
                     update_date = %s
                 WHERE 
                     counseling_code = %s
-                RETURNING *
+                RETURNING counseling_code
             """, (
                 content['student_code'],
                 content['scope_code'],
                 content['category_code'],
-                content['employee_code'],
                 content['counseling_date'],
                 content['problem'],
                 content['conclusion'],
@@ -256,6 +264,13 @@ def counseling(counseling_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404, request.method) 
+            
+            if(len(uploaded_file['attachment'].filename) != 0):
+                uploaded_file = uploaded_file['attachment']
+                uploaded_filename = dataUpdated["counseling_code"] + '.' + uploaded_file.filename.split('.')[-1] 
+                if(os.path.exists((os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], uploaded_filename)))):
+                    os.remove(os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], uploaded_filename))
+                uploaded_file.save(os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], uploaded_filename))
 
             return util.log_response({
                 "success": True,
@@ -323,7 +338,8 @@ def pagination_counseling():
                     t_counseling
                     INNER JOIN m_scope ON t_counseling.scope_code = m_scope.scope_code
                     INNER JOIN m_category ON t_counseling.category_code = m_category.category_code
-                """ + util.sort(content) + """
+                ORDER BY
+                    counseling_date DESC
                 LIMIT
                     """ + str(content['limit']) + """
                 OFFSET
@@ -343,7 +359,9 @@ def pagination_counseling():
                     INNER JOIN m_scope ON t_counseling.scope_code = m_scope.scope_code
                     INNER JOIN m_category ON t_counseling.category_code = m_category.category_code
                 WHERE
-                    (""" + util.filter(content) + """) """ + util.sort(content) + """
+                    (""" + util.filter(content) + """) 
+                ORDER BY
+                    counseling_date DESC
                 LIMIT
                     """ + str(content['limit']) + """
                 OFFSET
@@ -369,3 +387,11 @@ def pagination_counseling():
             "success": False,
             "message": error.pgerror,
         }), 400)
+
+# showing attachment file
+@bp.route("/counseling/attachment/<counseling_code>")
+def counselingAttachment(counseling_code):
+    filename_attachment = counseling_code + ".pdf"
+    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], filename_attachment)
+    if(os.path.isfile(path_file_attachment)):
+        return send_file(path_file_attachment)

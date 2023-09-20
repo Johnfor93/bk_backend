@@ -322,12 +322,12 @@ def pagination_consultation():
         for data in datas:
             consultations.append(consultationJson(data))
 
-        return util.log_response(
+        return make_response(
         {
             "data": consultations,
             "message": "success"
         }, 
-        200, request.method)
+        200)
     except psycopg2.Error as error:
         return make_response(jsonify({
             "success": False,
