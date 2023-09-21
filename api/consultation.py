@@ -3,6 +3,8 @@ from flask import (
     )
 from datetime import datetime
 import time
+import os
+import os.path
 
 import psycopg2
 
@@ -25,6 +27,15 @@ def consultationJson(item):
         "consultation_note"     : item["consultation_note"]
     }
 
+def consultationPagingFormatJSON(item):
+    return {
+        "consultation_code"       : item["consultation_code"],
+        "student_code"          : item["student_code"],
+        "scope_name"            : item["scope_name"],
+        "consultation_date"       : item["consultation_date"],
+        "problem"               : item["problem"]
+    }
+
 @bp.route("/consultations", methods=["POST"])
 @token_required
 def consultations():
@@ -32,15 +43,14 @@ def consultations():
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
+            uploaded_file = request.files
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Kode Siswa Tidak Boleh Kosong! "
             if(not('scope_code' in content.keys()) or len(content['scope_code']) == 0):
                 error+="Lingkup Masalah Tidak Boleh Kosong! "
-            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
-                error+="Kode Pegawai Tidak Boleh Kosong! "
             if(not('consultation_date' in content.keys()) or len(content['consultation_date']) == 0):
                 error+="Tanggal Konsultasi Tidak Boleh Kosong! "
             if(not('problem' in content.keys()) or len(content['problem']) == 0):
@@ -90,11 +100,12 @@ def consultations():
                     t_consultation
                 VALUES
                     (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING consultation_code
             """, (
                 consultation_code,
                 content['student_code'],
                 content['scope_code'],
-                content['employee_code'],
+                current_app.config['USER_CODE'], 
                 content['consultation_date'],
                 content['problem'],
                 content['conclusion'],
@@ -107,8 +118,15 @@ def consultations():
                 datetime.now())
             )
             conn.commit()
+            inserted_id = cur.fetchone()
             cur.close()
             conn.close()
+
+            if(len(uploaded_file['attachment'].filename) != 0):
+                uploaded_file = uploaded_file['attachment']
+                uploaded_filename = inserted_id["consultation_code"] + '.' + uploaded_file.filename.split('.')[-1] 
+                uploaded_file.save(os.path.join(current_app.config['UPLOAD_FOLDER_CONSULTATION'], uploaded_filename))
+
             return util.log_response({
                 "success": True,
                 "message": "Data sudah dimasukkan"
@@ -140,7 +158,9 @@ def consultation(consultation_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404) 
-            return make_response(jsonify(consultationJson(data)))
+            return make_response(jsonify({
+                "data" :consultationJson(data),
+                "success": True}), 200)
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -151,15 +171,14 @@ def consultation(consultation_code):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
+            uploaded_file = request.files
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Kode Siswa Tidak Boleh Kosong! "
             if(not('scope_code' in content.keys()) or len(content['scope_code']) == 0):
                 error+="Lingkup Masalah Tidak Boleh Kosong! "
-            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
-                error+="Kode Pegawai Tidak Boleh Kosong! "
             if(not('consultation_date' in content.keys()) or len(content['consultation_date']) == 0):
                 error+="Tanggal Konsultasi Tidak Boleh Kosong! "
             if(not('problem' in content.keys()) or len(content['problem']) == 0):
@@ -179,6 +198,7 @@ def consultation(consultation_code):
                     "message": "Data tidak lengkap! " + error,
                 }, 400, request.method)
 
+            print(content['created_at'])
             date_format = "%Y-%m-%d"
             now = datetime.now()
             dateNow = now.strftime("%Y-%m-%d")
@@ -214,7 +234,7 @@ def consultation(consultation_code):
             """, (
                 content['student_code'],
                 content['scope_code'],
-                content['employee_code'],
+                current_app.config['USER_CODE'], 
                 content['consultation_date'],
                 content['problem'],
                 content['conclusion'],
@@ -234,6 +254,13 @@ def consultation(consultation_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404, request.method) 
+
+            if(len(uploaded_file['attachment'].filename) != 0):
+                uploaded_file = uploaded_file['attachment']
+                uploaded_filename = dataUpdated["consultation_code"] + '.' + uploaded_file.filename.split('.')[-1] 
+                if(os.path.exists((os.path.join(current_app.config['UPLOAD_FOLDER_CONSULTATION'], uploaded_filename)))):
+                    os.remove(os.path.join(current_app.config['UPLOAD_FOLDER_CONSULTATION'], uploaded_filename))
+                uploaded_file.save(os.path.join(current_app.config['UPLOAD_FOLDER_CONSULTATION'], uploaded_filename))
 
             return util.log_response({
                 "success": True,
@@ -291,10 +318,17 @@ def pagination_consultation():
         if(filter==''):
             sql = """
                 SELECT
-                    *
+                    consultation_code,
+                    student_code,
+                    scope_name,
+                    consultation_date,
+                    problem
                 FROM
                     t_consultation
+                    INNER JOIN m_scope ON t_consultation.scope_code = m_scope.scope_code
                 """ + util.sort(content) + """
+                ORDER BY
+                    consultation_date DESC
                 LIMIT
                     """ + str(content['limit']) + """
                 OFFSET
@@ -303,11 +337,18 @@ def pagination_consultation():
         else:
             sql = """
                 SELECT
-                    *
+                    consultation_code,
+                    student_code,
+                    scope_name,
+                    consultation_date,
+                    problem
                 FROM
                     t_consultation
+                    INNER JOIN m_scope ON t_consultation.scope_code = m_scope.scope_code
                 WHERE
-                    (""" + util.filter(content) + """) """ + util.sort(content) + """
+                    (""" + util.filter(content) + """) 
+                ORDER BY
+                    consultation_date DESC
                 LIMIT
                     """ + str(content['limit']) + """
                 OFFSET
@@ -320,7 +361,7 @@ def pagination_consultation():
         
         consultations = []
         for data in datas:
-            consultations.append(consultationJson(data))
+            consultations.append(consultationPagingFormatJSON(data))
 
         return make_response(
         {
@@ -333,3 +374,10 @@ def pagination_consultation():
             "success": False,
             "message": error.pgerror,
         }), 400)
+
+@bp.route("/consultation/attachment/<consultation_code>")
+def consultationAttachment(consultation_code):
+    filename_attachment = consultation_code + ".pdf"
+    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_CONSULTATION'], filename_attachment)
+    if(os.path.isfile(path_file_attachment)):
+        return send_file(path_file_attachment)
