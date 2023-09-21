@@ -31,13 +31,11 @@ def visits():
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Kode Siswa Tidak Boleh Kosong! "
-            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
-                error+="Kode Pegawai Tidak Boleh Kosong! "
             if(not('visit_date' in content.keys()) or len(content['visit_date']) == 0):
                 error+="Tanggal Konsultasi Tidak Boleh Kosong! "
             if(not('reason' in content.keys()) or len(content['reason']) == 0):
@@ -89,7 +87,7 @@ def visits():
             """, (
                 visit_code,
                 content['student_code'],
-                content['employee_code'],
+                current_app.config['USER_CODE'], 
                 content['visit_date'],
                 content['reason'],
                 content['result'],
@@ -135,7 +133,9 @@ def visit(visit_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404) 
-            return make_response(jsonify(visitJson(data)))
+            return make_response(jsonify({
+                "data":visitJson(data),
+                "success": True}), 200)
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -146,13 +146,11 @@ def visit(visit_code):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Kode Siswa Tidak Boleh Kosong! "
-            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
-                error+="Kode Pegawai Tidak Boleh Kosong! "
             if(not('visit_date' in content.keys()) or len(content['visit_date']) == 0):
                 error+="Tanggal Konsultasi Tidak Boleh Kosong! "
             if(not('reason' in content.keys()) or len(content['reason']) == 0):
@@ -205,7 +203,7 @@ def visit(visit_code):
                 RETURNING *
             """, (
                 content['student_code'],
-                content['employee_code'],
+                current_app.config['USER_CODE'], 
                 content['visit_date'],
                 content['reason'],
                 content['result'],
