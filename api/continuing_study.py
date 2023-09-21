@@ -15,14 +15,29 @@ bp = Blueprint("continuing_study", __name__)
 def continuing_studyJson(item):
     return {
         "continuing_study_code"     : item["continuing_study_code"],
-        "student_code"          : item["student_code"],
-        "study_program_code"            : item["study_program_code"],
-        "employee_code"         : item["employee_code"],
+        "student_code"              : item["student_code"],
+        "study_program_code"        : item["study_program_code"],
+        "study_program_name"        : item["study_program_name"],
+        "faculty_code"              : item["faculty_code"],
+        "faculty_name"              : item["faculty_name"],
+        "university_code"           : item["university_code"],
+        "university_name"           : item["university_name"],
+        "employee_code"             : item["employee_code"],
         "continuing_study_date"     : item["continuing_study_date"],
-        "result"            : item["result"],
+        "result"                    : item["result"],
         "continuing_study_note"     : item["continuing_study_note"]
     }
-
+    
+def continuing_studyPagingFormatJSON(item):
+    return {
+        "continuing_study_code"         : item["continuing_study_code"],
+        "student_code"                  : item["student_code"],
+        "university_name"               : item["university_name"],
+        "study_program_name"            : item["study_program_name"],
+        "continuing_study_date"         : item["continuing_study_date"],
+        "result"                        : item["result"]
+    }
+    
 @bp.route("/continuing_studys", methods=["POST"])
 @token_required
 def continuing_studys():
@@ -120,8 +135,24 @@ def continuing_study(continuing_study_code):
             cur = conn.cursor()
 
             cur.execute("""
-                SELECT *
-                FROM t_continuing_study
+                SELECT 
+                    continuing_study_code,
+                    student_code,
+                    m_study_program.study_program_code,
+                    m_study_program.study_program_name,
+                    m_faculty.faculty_code,
+                    m_faculty.faculty_name,
+                    m_university.university_code,
+                    m_university.university_name,
+                    employee_code,
+                    continuing_study_date,
+                    result,
+                    continuing_study_note
+                FROM 
+                    t_continuing_study
+                    INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
+                    INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
+                    INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
                 WHERE continuing_study_code = %s
             """, (continuing_study_code,))
 
@@ -131,7 +162,9 @@ def continuing_study(continuing_study_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404) 
-            return make_response(jsonify(continuing_studyJson(data)))
+            return make_response(jsonify({
+                "data": continuing_studyJson(data),
+                "success":True}))
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -274,10 +307,19 @@ def pagination_continuing_study():
         if(filter==''):
             sql = """
                 SELECT
-                    *
+                    continuing_study_code,
+                    student_code,
+                    university_name,
+                    study_program_name,
+                    continuing_study_date,
+                    result
                 FROM
                     t_continuing_study
-                """ + util.sort(content) + """
+                    INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
+                    INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
+                    INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
+                ORDER BY
+                    continuing_study_date DESC
                 LIMIT
                     """ + str(content['limit']) + """
                 OFFSET
@@ -286,11 +328,21 @@ def pagination_continuing_study():
         else:
             sql = """
                 SELECT
-                    *
+                    continuing_study_code,
+                    student_code,
+                    university_name,
+                    study_program_name,
+                    continuing_study_date,
+                    result
                 FROM
                     t_continuing_study
+                    INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
+                    INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
+                    INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
                 WHERE
-                    (""" + util.filter(content) + """) """ + util.sort(content) + """
+                    (""" + util.filter(content) + """
+                ORDER BY
+                    continuing_study_date DESC
                 LIMIT
                     """ + str(content['limit']) + """
                 OFFSET
@@ -303,7 +355,7 @@ def pagination_continuing_study():
         
         continuing_studys = []
         for data in datas:
-            continuing_studys.append(continuing_studyJson(data))
+            continuing_studys.append(continuing_studyPagingFormatJSON(data))
 
         return util.log_response(
         {

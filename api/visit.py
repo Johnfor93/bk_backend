@@ -283,7 +283,8 @@ def pagination_visit():
                     *
                 FROM
                     t_visit
-                """ + util.sort(content) + """
+                ORDER BY
+                    visit_date DESC
                 LIMIT
                     """ + str(content['limit']) + """
                 OFFSET
@@ -296,7 +297,9 @@ def pagination_visit():
                 FROM
                     t_visit
                 WHERE
-                    (""" + util.filter(content) + """) """ + util.sort(content) + """
+                    (""" + util.filter(content) + """
+                ORDER BY
+                    visit_date DESC
                 LIMIT
                     """ + str(content['limit']) + """
                 OFFSET
