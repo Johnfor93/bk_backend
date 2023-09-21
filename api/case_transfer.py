@@ -3,6 +3,8 @@ from flask import (
     )
 from datetime import datetime
 import time
+import os
+import os.path
 
 import psycopg2
 
@@ -24,6 +26,15 @@ def case_transferJson(item):
         "case_transfer_note"     : item["case_transfer_note"]
     }
 
+def case_transferPagingFormatJSON(item):
+    return {
+        "case_transfer_code"       : item["case_transfer_code"],
+        "student_code"          : item["student_code"],
+        "provider_name"            : item["provider_name"],
+        "case_transfer_date"       : item["case_transfer_date"],
+        "result"               : item["result"]
+    }
+
 @bp.route("/case_transfers", methods=["POST"])
 @token_required
 def case_transfers():
@@ -31,15 +42,14 @@ def case_transfers():
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
+            uploaded_file = request.files
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Kode Siswa Tidak Boleh Kosong! "
             if(not('provider_code' in content.keys()) or len(content['provider_code']) == 0):
                 error+="Lingkup Masalah Tidak Boleh Kosong! "
-            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
-                error+="Kode Pegawai Tidak Boleh Kosong! "
             if(not('case_transfer_date' in content.keys()) or len(content['case_transfer_date']) == 0):
                 error+="Tanggal Konsultasi Tidak Boleh Kosong! "
             if(not('result' in content.keys()) or len(content['result']) == 0):
@@ -86,11 +96,12 @@ def case_transfers():
                     t_case_transfer
                 VALUES
                     (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING case_transfer_code
             """, (
                 case_transfer_code,
                 content['student_code'],
                 content['provider_code'],
-                content['employee_code'],
+                current_app.config['USER_CODE'], 
                 content['case_transfer_date'],
                 content['result'],
                 content['followup'],
@@ -102,8 +113,15 @@ def case_transfers():
                 datetime.now())
             )
             conn.commit()
+            inserted_id = cur.fetchone()
             cur.close()
             conn.close()
+
+            if(len(uploaded_file['attachment'].filename) != 0):
+                uploaded_file = uploaded_file['attachment']
+                uploaded_filename = inserted_id["case_transfer_code"] + '.' + uploaded_file.filename.split('.')[-1] 
+                uploaded_file.save(os.path.join(current_app.config['UPLOAD_FOLDER_CASETRANSFER'], uploaded_filename))
+
             return util.log_response({
                 "success": True,
                 "message": "Data sudah dimasukkan"
@@ -135,7 +153,9 @@ def case_transfer(case_transfer_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404) 
-            return make_response(jsonify(case_transferJson(data)))
+            return make_response(jsonify({
+                "data":case_transferJson(data),
+                "success": True}))
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -146,15 +166,14 @@ def case_transfer(case_transfer_code):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
+            uploaded_file = request.files
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Kode Siswa Tidak Boleh Kosong! "
             if(not('provider_code' in content.keys()) or len(content['provider_code']) == 0):
                 error+="Lingkup Masalah Tidak Boleh Kosong! "
-            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
-                error+="Kode Pegawai Tidak Boleh Kosong! "
             if(not('case_transfer_date' in content.keys()) or len(content['case_transfer_date']) == 0):
                 error+="Tanggal Konsultasi Tidak Boleh Kosong! "
             if(not('result' in content.keys()) or len(content['result']) == 0):
@@ -206,7 +225,7 @@ def case_transfer(case_transfer_code):
             """, (
                 content['student_code'],
                 content['provider_code'],
-                content['employee_code'],
+                current_app.config['USER_CODE'], 
                 content['case_transfer_date'],
                 content['result'],
                 content['followup'],
@@ -218,6 +237,14 @@ def case_transfer(case_transfer_code):
             conn.commit()
 
             dataUpdated = cur.fetchone()
+
+            if(len(uploaded_file['attachment'].filename) != 0):
+                uploaded_file = uploaded_file['attachment']
+                uploaded_filename = dataUpdated["case_transfer_code"] + '.' + uploaded_file.filename.split('.')[-1] 
+                if(os.path.exists((os.path.join(current_app.config['UPLOAD_FOLDER_CASETRANSFER'], uploaded_filename)))):
+                    os.remove(os.path.join(current_app.config['UPLOAD_FOLDER_CASETRANSFER'], uploaded_filename))
+                uploaded_file.save(os.path.join(current_app.config['UPLOAD_FOLDER_CASETRANSFER'], uploaded_filename))
+            
             cur.close()
             conn.close()
             if(dataUpdated == None):
@@ -282,10 +309,16 @@ def pagination_case_transfer():
         if(filter==''):
             sql = """
                 SELECT
-                    *
+                    case_transfer_code,
+                    student_code,
+                    provider_name,
+                    case_transfer_date,
+                    result
                 FROM
                     t_case_transfer
-                """ + util.sort(content) + """
+                    INNER JOIN m_provider on m_provider.provider_code = t_case_transfer.provider_code
+                ORDER BY
+                    case_transfer_date DESC
                 LIMIT
                     """ + str(content['limit']) + """
                 OFFSET
@@ -294,24 +327,32 @@ def pagination_case_transfer():
         else:
             sql = """
                 SELECT
-                    *
+                    case_transfer_code,
+                    student_code,
+                    provider_name,
+                    case_transfer_date,
+                    result
                 FROM
                     t_case_transfer
+                    INNER JOIN m_provider on m_provider.provider_code = t_case_transfer.provider_code
                 WHERE
-                    (""" + util.filter(content) + """) """ + util.sort(content) + """
+                    (""" + util.filter(content) + """
+                ORDER BY
+                    case_transfer_date DESC
                 LIMIT
                     """ + str(content['limit']) + """
                 OFFSET
                     """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
                 """
         cur.execute(sql)
+        print("MASUKK")
         datas = cur.fetchall()
         cur.close()
         conn.close()
         
         case_transfers = []
         for data in datas:
-            case_transfers.append(case_transferJson(data))
+            case_transfers.append(case_transferPagingFormatJSON(data))
 
         return util.log_response(
         {
@@ -320,7 +361,15 @@ def pagination_case_transfer():
         }, 
         200, request.method)
     except psycopg2.Error as error:
+        print(error)
         return make_response(jsonify({
             "success": False,
             "message": error.pgerror,
         }), 400)
+
+@bp.route("/case_transfer/attachment/<case_transfer_code>")
+def case_transferAttachment(case_transfer_code):
+    filename_attachment = case_transfer_code + ".pdf"
+    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_CASETRANSFER'], filename_attachment)
+    if(os.path.isfile(path_file_attachment)):
+        return send_file(path_file_attachment)
