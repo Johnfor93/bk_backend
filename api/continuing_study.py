@@ -4,6 +4,9 @@ from flask import (
 from datetime import datetime
 import time
 
+import requests
+import json
+
 import psycopg2
 
 from .database import get_db_connection
@@ -46,15 +49,13 @@ def continuing_studys():
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
                 error+="Kode Siswa Tidak Boleh Kosong! "
             if(not('study_program_code' in content.keys()) or len(content['study_program_code']) == 0):
                 error+="Program Studi Tidak Boleh Kosong! "
-            if(not('employee_code' in content.keys()) or len(content['employee_code']) == 0):
-                error+="Kode Pegawai Tidak Boleh Kosong! "
             if(not('continuing_study_date' in content.keys()) or len(content['continuing_study_date']) == 0):
                 error+="Tanggal Konsultasi Tidak Boleh Kosong! "
             if(not('result' in content.keys()) or len(content['result']) == 0):
@@ -104,7 +105,7 @@ def continuing_studys():
                 continuing_study_code,
                 content['student_code'],
                 content['study_program_code'],
-                content['employee_code'],
+                current_app.config['USER_CODE'], 
                 content['continuing_study_date'],
                 content['result'],
                 continuing_study_note,
@@ -176,7 +177,7 @@ def continuing_study(continuing_study_code):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
@@ -233,7 +234,7 @@ def continuing_study(continuing_study_code):
             """, (
                 content['student_code'],
                 content['study_program_code'],
-                content['employee_code'],
+                current_app.config['USER_CODE'], 
                 content['continuing_study_date'],
                 content['result'],
                 continuing_study_note,

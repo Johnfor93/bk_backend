@@ -6,6 +6,9 @@ import time
 import os
 import os.path
 
+import requests
+import json
+
 import psycopg2
 
 from .database import get_db_connection

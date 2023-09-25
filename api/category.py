@@ -7,7 +7,7 @@ import psycopg2
 
 from .database import get_db_connection
 from . import util
-from .auth import token_required
+from .auth import employee_required
 
 bp = Blueprint("category", __name__)
 
@@ -19,7 +19,7 @@ def categoryJson(item):
     }
 
 @bp.route("/categorys", methods=["POST"])
-@token_required
+@employee_required
 def categorys():
     if(request.method == "POST"):
         try:
@@ -81,7 +81,7 @@ def categorys():
             }, 400, request.method)
 
 @bp.route("/category/<category_code>", methods=["GET", "PUT", "DELETE"])
-@token_required
+@employee_required
 def category(category_code):
     if(request.method == "GET"):
         try:
@@ -203,7 +203,7 @@ def category(category_code):
             }), 400)
 
 @bp.route("/pagination_category", methods=["POST"])
-@token_required
+@employee_required
 def pagination_category():
     try:
         conn = get_db_connection()

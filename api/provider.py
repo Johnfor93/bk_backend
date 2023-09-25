@@ -7,7 +7,7 @@ import psycopg2
 
 from .database import get_db_connection
 from . import util
-from .auth import token_required
+from .auth import employee_required
 
 bp = Blueprint("provider", __name__)
 
@@ -20,7 +20,7 @@ def providerJson(item):
     }
 
 @bp.route("/providers", methods=["POST"])
-@token_required
+@employee_required
 def providers():
     if(request.method == "POST"):
         try:
@@ -85,7 +85,7 @@ def providers():
             }, 400, request.method)
 
 @bp.route("/provider/<provider_code>", methods=["GET", "PUT", "DELETE"])
-@token_required
+@employee_required
 def provider(provider_code):
     if(request.method == "GET"):
         try:
@@ -210,7 +210,7 @@ def provider(provider_code):
             }), 400)
 
 @bp.route("/pagination_provider", methods=["POST"])
-@token_required
+@employee_required
 def pagination_provider():
     try:
         conn = get_db_connection()

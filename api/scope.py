@@ -7,7 +7,7 @@ import psycopg2
 
 from .database import get_db_connection
 from . import util
-from .auth import token_required
+from .auth import employee_required
 
 bp = Blueprint("scope", __name__)
 
@@ -19,7 +19,7 @@ def scopeJson(item):
     }
 
 @bp.route("/scopes", methods=["POST"])
-@token_required
+@employee_required
 def scopes():
     if(request.method == "POST"):
         try:
@@ -81,7 +81,7 @@ def scopes():
             }, 400, request.method)
 
 @bp.route("/scope/<scope_code>", methods=["GET", "PUT", "DELETE"])
-@token_required
+@employee_required
 def scope(scope_code):
     if(request.method == "GET"):
         try:
@@ -202,7 +202,7 @@ def scope(scope_code):
             }), 400)
 
 @bp.route("/pagination_scope", methods=["POST"])
-@token_required
+@employee_required
 def pagination_scope():
     try:
         conn = get_db_connection()

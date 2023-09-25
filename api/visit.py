@@ -4,6 +4,9 @@ from flask import (
 from datetime import datetime
 import time
 
+import requests
+import json
+
 import psycopg2
 
 from .database import get_db_connection
