@@ -6,6 +6,9 @@ import time
 import os
 import os.path
 
+import requests
+import json
+
 import psycopg2
 
 from .database import get_db_connection
@@ -401,3 +404,101 @@ def counselingAttachment(counseling_code):
         return make_response({
             "success": False
         }, 404)
+
+@bp.route("/employee_pagination_counseling", methods=["POST"])
+@employee_required
+def employee_pagination_counseling():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        content = request.get_json()
+
+        student_search = ""
+
+        if('filter' in content.keys()):
+            student_search = content["filter"]
+
+        payload = {
+                "limit": "1000",
+                "page": "1",
+                "filters": [
+                    {
+                        "operator": "contains",
+                        "search": "subject_code",
+                        "value1": "bimbingan_konseling"
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "student_name",
+                        "value1": student_search
+                    }
+                ],
+                "filter_type": "AND"
+            }
+        
+        headers = {
+                'token': request.headers.get('token'),
+                'Content-Type': 'application/json',
+                'Accept': '*',
+                'Proxy-Authorization': 'http://192.168.100.104:7001',
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+            }
+        
+        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+
+        response = requests.post(url, data=json.dumps(payload), headers=headers)
+
+        success = response.ok
+        if(not success):
+            return make_response({
+                "message": "Data tidak ditemukan"
+            }, 401)
+        datas = response.json()
+        dataStundet = datas.data
+        listStundent = list()
+
+        for data in dataStundet: 
+            listStundent.append(data["student_code"])
+
+        sql = """
+            SELECT
+                counseling_code,
+                student_code,
+                scope_name,
+                category_name,
+                counseling_date,
+                problem
+            FROM
+                t_counseling
+                INNER JOIN m_scope ON t_counseling.scope_code = m_scope.scope_code
+                INNER JOIN m_category ON t_counseling.category_code = m_category.category_code
+            WHERE
+                student_code = ANY(%s)
+            ORDER BY
+                counseling_date DESC
+            LIMIT
+                """ + str(content['limit']) + """
+            OFFSET
+                """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+            """
+        
+        cur.execute(sql, list(listStundent))
+        datas = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        counselings = []
+        for data in datas:
+            counselings.append(counselingPagingFormatJSON(data))
+
+        return util.log_response(
+        {
+            "data": counselings,
+            "message": "success"
+        }, 
+        200, request.method)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)

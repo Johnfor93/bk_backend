@@ -23,7 +23,7 @@ def studentList():
         student_search = args.get('student_name')
 
     payload = {
-            "limit": "10",
+            "limit": "1000",
             "page": "1",
             "filters": [
                 {
