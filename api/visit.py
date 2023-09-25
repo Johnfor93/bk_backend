@@ -21,7 +21,20 @@ def visitJson(item):
         "reason"         : item["reason"],
         "result"         : item["result"],
         "followup"       : item["followup"],
-        "visit_note"     : item["visit_note"]
+        "visit_note"     : item["visit_note"],
+    }
+
+def visitPagingFormatJSON(item, nameStudent):
+    return {
+        "visit_code"     : item["visit_code"],
+        "student_code"   : item["student_code"],
+        "employee_code"  : item["employee_code"],
+        "visit_date"     : item["visit_date"],
+        "reason"         : item["reason"],
+        "result"         : item["result"],
+        "followup"       : item["followup"],
+        "visit_note"     : item["visit_note"],
+        "student_name"   : nameStudent[item["student_code"]],
     }
 
 @bp.route("/visits", methods=["POST"])
@@ -331,10 +344,102 @@ def pagination_visit():
 def visitAttachment(visit_code):
     filename_attachment = visit_code + ".pdf"
     path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], filename_attachment)
-    not_found = os.path.join(current_app.config['UPLOAD_FOLDER'], '404.png')
     if(os.path.isfile(path_file_attachment)):
         return send_file(path_file_attachment)
     else:
         return make_response({
             "success": False
         }, 404)
+    
+@bp.route("/employee_pagination_visit", methods=["POST"])
+@employee_required
+def employee_pagination_visit():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        content = request.get_json()
+
+        student_search = ""
+
+        if('filter' in content.keys()):
+            student_search = content["filter"]
+
+        payload = {
+                "limit": "1000",
+                "page": "1",
+                "filters": [
+                    {
+                        "operator": "contains",
+                        "search": "subject_code",
+                        "value1": "bimbingan_konseling"
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "student_name",
+                        "value1": student_search
+                    }
+                ],
+                "filter_type": "AND"
+            }
+        
+        headers = {
+                'token': request.headers.get('token'),
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+                'Proxy-Authorization': 'http://192.168.100.104:7001',
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+            }
+        
+        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+
+        response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=3)
+
+        success = response.ok
+        if(not success):
+            return make_response({
+                "message": "Data tidak ditemukan"
+            }, 401)
+        datas = response.json()
+        dataStundent = datas["data"]
+        nameStudent = dict()
+        listStundent = list()
+
+        for data in dataStundent: 
+            nameStudent.update({data["student_code"]: data["student_name"]})
+            listStundent.append(data["student_code"])
+
+        sql = """
+            SELECT
+                *
+            FROM
+                t_visit
+            WHERE
+                student_code = ANY(%s)
+            ORDER BY
+                visit_date DESC
+            LIMIT
+                """ + str(content['limit']) + """
+            OFFSET
+                """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+            """
+        
+        cur.execute(sql, (list(listStundent),))
+        datas = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        visits = []
+        for data in datas:
+            visits.append(visitPagingFormatJSON(data, nameStudent))
+
+        return make_response(
+        {
+            "data": visits,
+            "message": "success"
+        }, 
+        200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)

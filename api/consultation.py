@@ -6,6 +6,9 @@ import time
 import os
 import os.path
 
+import requests
+import json
+
 import psycopg2
 
 from .database import get_db_connection
@@ -27,13 +30,14 @@ def consultationJson(item):
         "consultation_note"     : item["consultation_note"]
     }
 
-def consultationPagingFormatJSON(item):
+def consultationPagingFormatJSON(item, nameStudent):
     return {
         "consultation_code"       : item["consultation_code"],
         "student_code"          : item["student_code"],
         "scope_name"            : item["scope_name"],
         "consultation_date"       : item["consultation_date"],
-        "problem"               : item["problem"]
+        "problem"               : item["problem"],
+        "student_name"          : nameStudent[item["student_code"]],
     }
 
 @bp.route("/consultations", methods=["POST"])
@@ -379,7 +383,7 @@ def pagination_consultation():
 @bp.route("/consultation/attachment/<consultation_code>")
 def consultationAttachment(consultation_code):
     filename_attachment = consultation_code + ".pdf"
-    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], filename_attachment)
+    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_CONSULTATION'], filename_attachment)
     not_found = os.path.join(current_app.config['UPLOAD_FOLDER'], '404.png')
     if(os.path.isfile(path_file_attachment)):
         return send_file(path_file_attachment)
@@ -387,3 +391,101 @@ def consultationAttachment(consultation_code):
         return make_response({
             "success": False
         }, 404)
+    
+@bp.route("/employee_pagination_consultation", methods=["POST"])
+@employee_required
+def employee_pagination_consultation():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        content = request.get_json()
+
+        student_search = ""
+
+        if('filter' in content.keys()):
+            student_search = content["filter"]
+
+        payload = {
+                "limit": "1000",
+                "page": "1",
+                "filters": [
+                    {
+                        "operator": "contains",
+                        "search": "subject_code",
+                        "value1": "bimbingan_konseling"
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "student_name",
+                        "value1": student_search
+                    }
+                ],
+                "filter_type": "AND"
+            }
+        
+        headers = {
+                'token': request.headers.get('token'),
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+                'Proxy-Authorization': 'http://192.168.100.104:7001',
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+            }
+        
+        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+
+        response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=3)
+
+        success = response.ok
+        if(not success):
+            return make_response({
+                "message": "Data tidak ditemukan"
+            }, 401)
+        datas = response.json()
+        dataStundent = datas["data"]
+        nameStudent = dict()
+        listStundent = list()
+
+        for data in dataStundent: 
+            nameStudent.update({data["student_code"]: data["student_name"]})
+            listStundent.append(data["student_code"])
+
+        sql = """
+            SELECT
+                consultation_code,
+                student_code,
+                scope_name,
+                consultation_date,
+                problem
+            FROM
+                t_consultation
+                INNER JOIN m_scope ON t_consultation.scope_code = m_scope.scope_code
+            WHERE
+                student_code = ANY(%s)
+            ORDER BY
+                consultation_date DESC
+            LIMIT
+                """ + str(content['limit']) + """
+            OFFSET
+                """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+            """
+        
+        cur.execute(sql, (list(listStundent),))
+        datas = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        consultations = []
+        for data in datas:
+            consultations.append(consultationPagingFormatJSON(data, nameStudent))
+
+        return make_response(
+        {
+            "data": consultations,
+            "message": "success"
+        }, 
+        200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)

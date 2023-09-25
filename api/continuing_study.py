@@ -28,14 +28,15 @@ def continuing_studyJson(item):
         "continuing_study_note"     : item["continuing_study_note"]
     }
     
-def continuing_studyPagingFormatJSON(item):
+def continuing_studyPagingFormatJSON(item, nameStudent):
     return {
         "continuing_study_code"         : item["continuing_study_code"],
         "student_code"                  : item["student_code"],
         "university_name"               : item["university_name"],
         "study_program_name"            : item["study_program_name"],
         "continuing_study_date"         : item["continuing_study_date"],
-        "result"                        : item["result"]
+        "result"                        : item["result"],
+        "student_name"                  : nameStudent[item["student_code"]],
     }
     
 @bp.route("/continuing_studys", methods=["POST"])
@@ -363,6 +364,107 @@ def pagination_continuing_study():
             "message": "success"
         }, 
         200, request.method)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)
+
+@bp.route("/employee_pagination_continuing_study", methods=["POST"])
+@employee_required
+def employee_pagination_continuing_study():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        content = request.get_json()
+
+        student_search = ""
+
+        if('filter' in content.keys()):
+            student_search = content["filter"]
+
+        payload = {
+                "limit": "1000",
+                "page": "1",
+                "filters": [
+                    {
+                        "operator": "contains",
+                        "search": "subject_code",
+                        "value1": "bimbingan_konseling"
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "student_name",
+                        "value1": student_search
+                    }
+                ],
+                "filter_type": "AND"
+            }
+        
+        headers = {
+                'token': request.headers.get('token'),
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+                'Proxy-Authorization': 'http://192.168.100.104:7001',
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+            }
+        
+        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+
+        response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=3)
+
+        success = response.ok
+        if(not success):
+            return make_response({
+                "message": "Data tidak ditemukan"
+            }, 401)
+        datas = response.json()
+        dataStundent = datas["data"]
+        nameStudent = dict()
+        listStundent = list()
+
+        for data in dataStundent: 
+            nameStudent.update({data["student_code"]: data["student_name"]})
+            listStundent.append(data["student_code"])
+
+        sql = """
+            SELECT
+                continuing_study_code,
+                student_code,
+                university_name,
+                study_program_name,
+                continuing_study_date,
+                result
+            FROM
+                t_continuing_study
+                INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
+                INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
+                INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
+            WHERE
+                student_code = ANY(%s)
+            ORDER BY
+                continuing_study_date DESC
+            LIMIT
+                """ + str(content['limit']) + """
+            OFFSET
+                """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+            """
+        
+        cur.execute(sql, (list(listStundent),))
+        datas = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        continuing_studys = []
+        for data in datas:
+            continuing_studys.append(continuing_studyPagingFormatJSON(data, nameStudent))
+
+        return make_response(
+        {
+            "data": continuing_studys,
+            "message": "success"
+        }, 
+        200)
     except psycopg2.Error as error:
         return make_response(jsonify({
             "success": False,

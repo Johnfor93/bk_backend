@@ -27,13 +27,14 @@ def case_transferJson(item):
         "case_transfer_note"     : item["case_transfer_note"]
     }
 
-def case_transferPagingFormatJSON(item):
+def case_transferPagingFormatJSON(item, nameStudent):
     return {
         "case_transfer_code"       : item["case_transfer_code"],
         "student_code"          : item["student_code"],
         "provider_name"            : item["provider_name"],
         "case_transfer_date"       : item["case_transfer_date"],
-        "result"               : item["result"]
+        "result"               : item["result"],
+        "student_name"          : nameStudent[item["student_code"]],
     }
 
 @bp.route("/case_transfers", methods=["POST"])
@@ -382,7 +383,7 @@ def pagination_case_transfer():
 @bp.route("/case_transfer/attachment/<case_transfer_code>")
 def case_transferAttachment(case_transfer_code):
     filename_attachment = case_transfer_code + ".pdf"
-    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], filename_attachment)
+    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_CASETRANSFER'], filename_attachment)
     not_found = os.path.join(current_app.config['UPLOAD_FOLDER'], '404.png')
     if(os.path.isfile(path_file_attachment)):
         return send_file(path_file_attachment)
@@ -390,3 +391,101 @@ def case_transferAttachment(case_transfer_code):
         return make_response({
             "success": False
         }, 404)
+    
+@bp.route("/employee_pagination_case_transfer", methods=["POST"])
+@employee_required
+def employee_pagination_case_transfer():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        content = request.get_json()
+
+        student_search = ""
+
+        if('filter' in content.keys()):
+            student_search = content["filter"]
+
+        payload = {
+                "limit": "1000",
+                "page": "1",
+                "filters": [
+                    {
+                        "operator": "contains",
+                        "search": "subject_code",
+                        "value1": "bimbingan_konseling"
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "student_name",
+                        "value1": student_search
+                    }
+                ],
+                "filter_type": "AND"
+            }
+        
+        headers = {
+                'token': request.headers.get('token'),
+                'Content-Type': 'application/json',
+                'accept': 'application/json',
+                'Proxy-Authorization': 'http://192.168.100.104:7001',
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+            }
+        
+        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+
+        response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=3)
+
+        success = response.ok
+        if(not success):
+            return make_response({
+                "message": "Data tidak ditemukan"
+            }, 401)
+        datas = response.json()
+        dataStundent = datas["data"]
+        nameStudent = dict()
+        listStundent = list()
+
+        for data in dataStundent: 
+            nameStudent.update({data["student_code"]: data["student_name"]})
+            listStundent.append(data["student_code"])
+
+        sql = """
+            SELECT
+                case_transfer_code,
+                student_code,
+                provider_name,
+                case_transfer_date,
+                result
+            FROM
+                t_case_transfer
+                INNER JOIN m_provider on m_provider.provider_code = t_case_transfer.provider_code
+            WHERE
+                student_code = ANY(%s)
+            ORDER BY
+                case_transfer_date DESC
+            LIMIT
+                """ + str(content['limit']) + """
+            OFFSET
+                """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+            """
+        
+        cur.execute(sql, (list(listStundent),))
+        datas = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        case_transfers = []
+        for data in datas:
+            case_transfers.append(case_transferPagingFormatJSON(data, nameStudent))
+
+        return make_response(
+        {
+            "data": case_transfers,
+            "message": "success"
+        }, 
+        200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)
