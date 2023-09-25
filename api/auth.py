@@ -61,6 +61,7 @@ def employee_required(f):
         if not token:
             return make_response(jsonify({"message": "Missing token"}), 400)
         try:
+            print("Token:"+ token)
             login = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
             current_app.config['USER_CODE'] = login['employee_code']
         except:

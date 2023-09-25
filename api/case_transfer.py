@@ -10,7 +10,7 @@ import psycopg2
 
 from .database import get_db_connection
 from . import util
-from .auth import token_required
+from .auth import token_required, employee_required
 
 bp = Blueprint("case_transfer", __name__)
 
@@ -37,7 +37,7 @@ def case_transferPagingFormatJSON(item):
     }
 
 @bp.route("/case_transfers", methods=["POST"])
-@token_required
+@employee_required
 def case_transfers():
     if(request.method == "POST"):
         try:
@@ -134,7 +134,7 @@ def case_transfers():
             }, 400, request.method)
 
 @bp.route("/case_transfer/<case_transfer_code>", methods=["GET", "PUT", "DELETE"])
-@token_required
+@employee_required
 def case_transfer(case_transfer_code):
     if(request.method == "GET"):
         try:
@@ -308,7 +308,7 @@ def case_transfer(case_transfer_code):
             }), 400)
 
 @bp.route("/pagination_case_transfer", methods=["POST"])
-@token_required
+@employee_required
 def pagination_case_transfer():
     try:
         conn = get_db_connection()
@@ -378,9 +378,15 @@ def pagination_case_transfer():
             "message": error.pgerror,
         }), 400)
 
+# showing attachment file
 @bp.route("/case_transfer/attachment/<case_transfer_code>")
 def case_transferAttachment(case_transfer_code):
     filename_attachment = case_transfer_code + ".pdf"
-    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_CASETRANSFER'], filename_attachment)
+    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], filename_attachment)
+    not_found = os.path.join(current_app.config['UPLOAD_FOLDER'], '404.png')
     if(os.path.isfile(path_file_attachment)):
         return send_file(path_file_attachment)
+    else:
+        return make_response({
+            "success": False
+        }, 404)

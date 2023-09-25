@@ -8,7 +8,7 @@ import psycopg2
 
 from .database import get_db_connection
 from . import util
-from .auth import token_required
+from .auth import token_required, employee_required
 
 bp = Blueprint("visit", __name__)
 
@@ -25,7 +25,7 @@ def visitJson(item):
     }
 
 @bp.route("/visits", methods=["POST"])
-@token_required
+@employee_required
 def visits():
     if(request.method == "POST"):
         try:
@@ -113,7 +113,7 @@ def visits():
             }, 400, request.method)
 
 @bp.route("/visit/<visit_code>", methods=["GET", "PUT", "DELETE"])
-@token_required
+@employee_required
 def visit(visit_code):
     if(request.method == "GET"):
         try:
@@ -268,7 +268,7 @@ def visit(visit_code):
             }), 400)
 
 @bp.route("/pagination_visit", methods=["POST"])
-@token_required
+@employee_required
 def pagination_visit():
     try:
         conn = get_db_connection()
@@ -325,3 +325,16 @@ def pagination_visit():
             "success": False,
             "message": error.pgerror,
         }), 400)
+
+# showing attachment file
+@bp.route("/visit/attachment/<visit_code>")
+def visitAttachment(visit_code):
+    filename_attachment = visit_code + ".pdf"
+    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], filename_attachment)
+    not_found = os.path.join(current_app.config['UPLOAD_FOLDER'], '404.png')
+    if(os.path.isfile(path_file_attachment)):
+        return send_file(path_file_attachment)
+    else:
+        return make_response({
+            "success": False
+        }, 404)

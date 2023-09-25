@@ -264,3 +264,16 @@ def pagination_study_program():
             "success": False,
             "message": error.pgerror,
         }), 400)
+
+# showing attachment file
+@bp.route("/study_program/attachment/<study_program_code>")
+def study_programAttachment(study_program_code):
+    filename_attachment = study_program_code + ".pdf"
+    path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], filename_attachment)
+    not_found = os.path.join(current_app.config['UPLOAD_FOLDER'], '404.png')
+    if(os.path.isfile(path_file_attachment)):
+        return send_file(path_file_attachment)
+    else:
+        return make_response({
+            "success": False
+        }, 404)

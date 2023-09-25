@@ -10,7 +10,7 @@ import psycopg2
 
 from .database import get_db_connection
 from . import util
-from .auth import token_required
+from .auth import token_required, employee_required
 
 bp = Blueprint("counseling", __name__)
 
@@ -39,7 +39,7 @@ def counselingPagingFormatJSON(item):
     }
 
 @bp.route("/counselings", methods=["POST"])
-@token_required
+@employee_required
 def counselings():
     if(request.method == "POST"):
         try:
@@ -144,7 +144,7 @@ def counselings():
             }, 400, request.method)
 
 @bp.route("/counseling/<counseling_code>", methods=["GET", "PUT", "DELETE"])
-@token_required
+@employee_required
 def counseling(counseling_code):
     if(request.method == "GET"):
         try:
@@ -316,9 +316,10 @@ def counseling(counseling_code):
             }), 400)
 
 @bp.route("/pagination_counseling", methods=["POST"])
-@token_required
+@employee_required
 def pagination_counseling():
     try:
+        print("MASUKKK")
         conn = get_db_connection()
         cur = conn.cursor()
         content = request.get_json()
@@ -393,7 +394,10 @@ def pagination_counseling():
 def counselingAttachment(counseling_code):
     filename_attachment = counseling_code + ".pdf"
     path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], filename_attachment)
+    not_found = os.path.join(current_app.config['UPLOAD_FOLDER'], '404.png')
     if(os.path.isfile(path_file_attachment)):
         return send_file(path_file_attachment)
     else:
-        return send_file(os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], '404.jpg'))
+        return make_response({
+            "success": False
+        }, 404)
