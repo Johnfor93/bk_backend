@@ -31,10 +31,11 @@ def counselingJson(item):
         "counseling_note"       : item["counseling_note"]
     }
 
-def counselingPagingFormatJSON(item):
+def counselingPagingFormatJSON(item, nameStudent):
     return {
         "counseling_code"       : item["counseling_code"],
         "student_code"          : item["student_code"],
+        "student_name"          : nameStudent[item["student_code"]],
         "scope_name"            : item["scope_name"],
         "category_name"         : item["category_name"],
         "counseling_date"       : item["counseling_date"],
@@ -322,7 +323,6 @@ def counseling(counseling_code):
 @employee_required
 def pagination_counseling():
     try:
-        print("MASUKKK")
         conn = get_db_connection()
         cur = conn.cursor()
         content = request.get_json()
@@ -454,10 +454,12 @@ def employee_pagination_counseling():
                 "message": "Data tidak ditemukan"
             }, 401)
         datas = response.json()
-        dataStundet = datas.data
+        dataStundent = datas["data"]
+        nameStudent = dict()
         listStundent = list()
 
-        for data in dataStundet: 
+        for data in dataStundent: 
+            nameStudent.update(data["student_code"], data["student_name"])
             listStundent.append(data["student_code"])
 
         sql = """
@@ -482,21 +484,21 @@ def employee_pagination_counseling():
                 """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
             """
         
-        cur.execute(sql, list(listStundent))
+        cur.execute(sql, (list(listStundent),))
         datas = cur.fetchall()
         cur.close()
         conn.close()
         
         counselings = []
         for data in datas:
-            counselings.append(counselingPagingFormatJSON(data))
+            counselings.append(counselingPagingFormatJSON(data, nameStudent))
 
-        return util.log_response(
+        return make_response(
         {
             "data": counselings,
             "message": "success"
         }, 
-        200, request.method)
+        200)
     except psycopg2.Error as error:
         return make_response(jsonify({
             "success": False,
