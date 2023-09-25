@@ -264,3 +264,30 @@ def pagination_faculty():
             "success": False,
             "message": error.pgerror,
         }), 400)
+    
+@bp.route("facultylist/<university_code>")
+@token_required
+def facultylist(university_code):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT *
+            FROM m_faculty
+            WHERE university_code = %s
+        """, (university_code,))
+
+        data = cur.fetchone()
+
+        if(data == None):
+            return make_response({
+                "success": False,
+                "message": "Data tidak ditemukan"
+            }, 404) 
+        return make_response(jsonify(facultyJson(data)))
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)

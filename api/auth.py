@@ -22,6 +22,7 @@ def token_required(f):
         try:
             login = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
             conn = get_db_connection()
+            print(token)
             cur = conn.cursor()
             cur.execute("""
                 SELECT
@@ -50,6 +51,20 @@ def token_required(f):
                 return make_response(jsonify({"message": "Not authorized"}), 401)
         except:
             return make_response(jsonify({"message": "Invalid ENV"}), 401)
+        return f(*args, **kwargs)
+    return decorator
+
+def employee_required(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        token = request.headers.get('token')
+        if not token:
+            return make_response(jsonify({"message": "Missing token"}), 400)
+        try:
+            login = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_app.config['USER_CODE'] = login['employee_code']
+        except:
+            return make_response(jsonify({"message": "Invalid ENV"}), 400)
         return f(*args, **kwargs)
     return decorator
 

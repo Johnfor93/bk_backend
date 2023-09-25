@@ -395,3 +395,5 @@ def counselingAttachment(counseling_code):
     path_file_attachment = os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], filename_attachment)
     if(os.path.isfile(path_file_attachment)):
         return send_file(path_file_attachment)
+    else:
+        return send_file(os.path.join(current_app.config['UPLOAD_FOLDER_COUNSELING'], '404.jpg'))
