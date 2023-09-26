@@ -554,3 +554,44 @@ def employee_pagination_counseling():
             "success": False,
             "message": error.pgerror,
         }), 400)
+    
+@bp.route("/counseling/history/<student_code>", methods=["POST"])
+@employee_required
+def historyStudent(student_code):
+    try:
+        # get counseling data
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT 
+                t_counseling.*,
+                m_category.category_name,
+                m_scope.scope_name,
+            FROM 
+                t_counseling
+                INNER JOIN m_scope ON t_counseling.scope_code = m_scope.scope_code
+                INNER JOIN m_category ON t_counseling.category_code = m_category.category_code
+            WHERE 
+                counseling_code = %s
+        """, (student_code,))
+
+        datas = cur.fetchall()
+
+        if(datas == None):
+            return make_response({
+                "success": False,
+                "message": "Data tidak ditemukan"
+            }, 404) 
+        dataJSON = []
+        for data in datas:
+            dataJSON.append(counselingJson(data))
+
+        return make_response(jsonify({
+            "data":dataJSON,
+            "success": True}), 200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)
