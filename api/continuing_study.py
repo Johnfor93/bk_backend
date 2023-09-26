@@ -1,8 +1,9 @@
 from flask import (
-    request, Blueprint, current_app, make_response, jsonify
+    request, Blueprint, current_app, make_response, jsonify, send_file
     )
 from datetime import datetime
 import time
+import os.path
 
 import requests
 import json
@@ -133,40 +134,75 @@ def continuing_studys():
 def continuing_study(continuing_study_code):
     if(request.method == "GET"):
         try:
+            # get continuing_study data
             conn = get_db_connection()
             cur = conn.cursor()
 
             cur.execute("""
-                SELECT 
-                    continuing_study_code,
-                    student_code,
-                    m_study_program.study_program_code,
-                    m_study_program.study_program_name,
-                    m_faculty.faculty_code,
-                    m_faculty.faculty_name,
-                    m_university.university_code,
-                    m_university.university_name,
-                    employee_code,
-                    continuing_study_date,
-                    result,
-                    continuing_study_note
-                FROM 
-                    t_continuing_study
-                    INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
-                    INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
-                    INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
+                SELECT *
+                FROM t_continuing_study
                 WHERE continuing_study_code = %s
             """, (continuing_study_code,))
 
             data = cur.fetchone()
+
             if(data == None):
                 return make_response({
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404) 
+            
+            # get student name
+            payload = {
+                "limit": "1000",
+                "page": "1",
+                "filters": [
+                    {
+                        "operator": "contains",
+                        "search": "subject_code",
+                        "value1": "bimbingan_konseling"
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "student_code",
+                        "value1": data["student_code"]
+                    }
+                ],
+                "filter_type": "AND"
+            }
+        
+            headers = {
+                    'token': request.headers.get('token'),
+                    'Content-Type': 'application/json',
+                    'accept': 'application/json',
+                    'Proxy-Authorization': 'http://192.168.100.104:7001',
+                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+                }
+            
+            url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+
+            response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=3)
+
+            success = response.ok
+            if(not success):
+                return make_response({
+                    "message": "Data tidak ditemukan"
+                }, 401)
+            datas = response.json()
+            dataStundent = datas["data"]
+
+            if(len(dataStundent) == 0):
+                return make_response({
+                    "success": False,
+                    "message": "Data siswa tidak ditemukan"
+                }, 404) 
+            
+            dataJSON = continuing_studyJson(data)
+            dataJSON.update({"student_name": dataStundent[0]["student_name"]})
+
             return make_response(jsonify({
-                "data": continuing_studyJson(data),
-                "success":True}))
+                "data":dataJSON,
+                "success": True}), 200)
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
