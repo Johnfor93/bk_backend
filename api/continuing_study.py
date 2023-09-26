@@ -139,9 +139,24 @@ def continuing_study(continuing_study_code):
             cur = conn.cursor()
 
             cur.execute("""
-                SELECT *
-                FROM t_continuing_study
-                WHERE continuing_study_code = %s
+                SELECT
+                continuing_study_code,
+                student_code,
+                m_university.university_name,
+                m_faculty.faculty_name,
+                m_study_program.study_program_name,
+                m_university.university_code,
+                m_faculty.faculty_code,
+                m_study_program.study_program_code,
+                continuing_study_date,
+                result
+            FROM
+                t_continuing_study
+                INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
+                INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
+                INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
+            WHERE
+                continuing_study_code = %s
             """, (continuing_study_code,))
 
             data = cur.fetchone()

@@ -147,9 +147,18 @@ def case_transfer(case_transfer_code):
             cur = conn.cursor()
 
             cur.execute("""
-                SELECT *
-                FROM t_case_transfer
-                WHERE case_transfer_code = %s
+                SELECT
+                case_transfer_code,
+                student_code,
+                m_provider.provider_code,
+                m_provider.provider_name,
+                case_transfer_date,
+                result
+            FROM
+                t_case_transfer
+                INNER JOIN m_provider on m_provider.provider_code = t_case_transfer.provider_code
+            WHERE
+                case_transfer_code = %s
             """, (case_transfer_code,))
 
             data = cur.fetchone()
