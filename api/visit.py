@@ -500,3 +500,40 @@ def employee_pagination_visit():
             "success": False,
             "message": error.pgerror,
         }), 400)
+    
+@bp.route("/visit/history/<student_code>", methods=["GET"])
+@employee_required
+def historyStudent(student_code):
+    try:
+        # get visit data
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT
+                *
+            FROM
+                t_visit
+            WHERE 
+                student_code = %s
+        """, (student_code,))
+
+        datas = cur.fetchall()
+
+        if(datas == None):
+            return make_response({
+                "success": False,
+                "message": "Data tidak ditemukan"
+            }, 404) 
+        dataJSON = []
+        for data in datas:
+            dataJSON.append(visitJson(data))
+
+        return make_response(jsonify({
+            "data":dataJSON,
+            "success": True}), 200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)

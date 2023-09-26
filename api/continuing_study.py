@@ -524,3 +524,56 @@ def employee_pagination_continuing_study():
             "success": False,
             "message": error.pgerror,
         }), 400)
+    
+@bp.route("/continuing_study/history/<student_code>", methods=["GET"])
+@employee_required
+def historyStudent(student_code):
+    try:
+        # get continuing_study data
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT 
+                continuing_study_code,
+                student_code,
+                m_study_program.study_program_code,
+                m_study_program.study_program_name,
+                m_faculty.faculty_code,
+                m_faculty.faculty_name,
+                m_university.university_code,
+                m_university.university_name,
+                employee_code,
+                continuing_study_date,
+                problem,
+                conclusion,
+                followup,
+                continuing_study_note
+            FROM 
+                t_continuing_study
+                INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
+                INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
+                INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
+            WHERE 
+                student_code = %s
+        """, (student_code,))
+
+        datas = cur.fetchall()
+
+        if(datas == None):
+            return make_response({
+                "success": False,
+                "message": "Data tidak ditemukan"
+            }, 404) 
+        dataJSON = []
+        for data in datas:
+            dataJSON.append(continuing_studyJson(data))
+
+        return make_response(jsonify({
+            "data":dataJSON,
+            "success": True}), 200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)

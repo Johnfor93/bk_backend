@@ -546,3 +546,45 @@ def employee_pagination_case_transfer():
             "success": False,
             "message": error.pgerror,
         }), 400)
+    
+@bp.route("/case_transfer/history/<student_code>", methods=["GET"])
+@employee_required
+def historyStudent(student_code):
+    try:
+        # get case_transfer data
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT
+                case_transfer_code,
+                student_code,
+                provider_name,
+                case_transfer_date,
+                result
+            FROM
+                t_case_transfer
+                INNER JOIN m_provider on m_provider.provider_code = t_case_transfer.provider_code
+            WHERE 
+                student_code = %s
+        """, (student_code,))
+
+        datas = cur.fetchall()
+
+        if(datas == None):
+            return make_response({
+                "success": False,
+                "message": "Data tidak ditemukan"
+            }, 404) 
+        dataJSON = []
+        for data in datas:
+            dataJSON.append(case_transferJson(data))
+
+        return make_response(jsonify({
+            "data":dataJSON,
+            "success": True}), 200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)

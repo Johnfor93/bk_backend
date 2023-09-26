@@ -30,6 +30,20 @@ def consultationJson(item):
         "consultation_note"     : item["consultation_note"]
     }
 
+def consultationHistoryJson(item):
+    return {
+        "consultation_code"     : item["consultation_code"],
+        "student_code"          : item["student_code"],
+        "scope_code"            : item["scope_code"],
+        "scope_name"            : item["scope_name"],
+        "employee_code"         : item["employee_code"],
+        "consultation_date"     : item["consultation_date"],
+        "problem"               : item["problem"],
+        "conclusion"            : item["conclusion"],
+        "followup"              : item["followup"],
+        "consultation_note"     : item["consultation_note"]
+    }
+
 def consultationPagingFormatJSON(item, nameStudent):
     return {
         "consultation_code"       : item["consultation_code"],
@@ -535,6 +549,53 @@ def employee_pagination_consultation():
             "message": "success"
         }, 
         200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)
+    
+@bp.route("/consultation/history/<student_code>", methods=["GET"])
+@employee_required
+def historyStudent(student_code):
+    try:
+        # get consultation data
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT
+                consultation_code,
+                student_code,
+                m_scope.scope_code,
+                m_scope.scope_name,
+                employee_code,
+                consultation_date,
+                problem,
+                conclusion,
+                followup,
+                consultation_note
+            FROM
+                t_consultation
+                INNER JOIN m_scope ON t_consultation.scope_code = m_scope.scope_code
+            WHERE 
+                student_code = %s
+        """, (student_code,))
+
+        datas = cur.fetchall()
+
+        if(datas == None):
+            return make_response({
+                "success": False,
+                "message": "Data tidak ditemukan"
+            }, 404) 
+        dataJSON = []
+        for data in datas:
+            dataJSON.append(consultationHistoryJson(data))
+
+        return make_response(jsonify({
+            "data":dataJSON,
+            "success": True}), 200)
     except psycopg2.Error as error:
         return make_response(jsonify({
             "success": False,
