@@ -14,16 +14,27 @@ import requests
 
 bp = Blueprint("service", __name__)
 
-@bp.route("/getemployee/student")
+@bp.route("/getemployee/student", methods=["POST"])
 @employee_required
 def studentList():
-    args = request.args
+    content = request.get_json()
     student_search = ""
-    if 'student_name' in args.keys():
-        student_search = args.get('student_name')
+    limit = '10'
+    if 'student_name' in content.keys():
+        student_search = content.get('student_name')
+
+    if 'page' in content.keys():
+        page = str(content.get('page'))
+    else:
+        return make_response({
+            "message": "Halaman tidak dimasukkan"
+        }, 401)
+
+    if 'limit' in content.keys():
+        limit = str(content.get('limit'))
 
     payload = {
-            "limit": "1000",
+            "limit": limit,
             "page": "1",
             "filters": [
                 {
