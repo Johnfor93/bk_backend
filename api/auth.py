@@ -97,3 +97,22 @@ def login():
         return make_response(jsonify(stats),status_code)
     except requests.exceptions.HTTPError as err:
         return make_response(err, 401)
+    
+@bp.route('/employee_login', methods=['POST'])
+def employee_login():
+    content = request.get_json()
+    # hashed_key = hashlib.md5(employee_key.encode()).hexdigest()
+    payload = {
+        "employee_code" :  content["employee_code"],
+        "employee_key" : content["employee_key"]
+    }
+    response = requests.post("http://192.168.100.106:7002/employee_login", headers = {'Content-Type' : 'application/json'}, json = payload)
+    
+    if 'token' not in response.json():
+        return make_response({
+                "message": "Data tidak ditemukan"
+            }, 401)
+    else:
+        stats = response.json()
+        status_code = response.status_code
+        return make_response(jsonify(stats),status_code)
