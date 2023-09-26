@@ -581,15 +581,24 @@ def historyStudent(student_code):
 
         cur.execute("""
             SELECT 
-                t_counseling.*,
-                m_category.category_name,
+                counseling_code,
+                student_code,
+                m_scope.scope_code,
                 m_scope.scope_name,
+                m_category.category_code,
+                m_category.category_name,
+                employee_code,
+                counseling_date,
+                problem,
+                conclusion,
+                followup,
+                counseling_note
             FROM 
                 t_counseling
                 INNER JOIN m_scope ON t_counseling.scope_code = m_scope.scope_code
                 INNER JOIN m_category ON t_counseling.category_code = m_category.category_code
             WHERE 
-                counseling_code = %s
+                student_code = %s
         """, (student_code,))
 
         datas = cur.fetchall()

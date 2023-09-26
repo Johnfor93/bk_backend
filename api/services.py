@@ -35,7 +35,7 @@ def studentList():
 
     payload = {
             "limit": limit,
-            "page": "1",
+            "page": page,
             "filters": [
                 {
                     "operator": "contains",
