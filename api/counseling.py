@@ -152,6 +152,7 @@ def counselings():
 def counseling(counseling_code):
     if(request.method == "GET"):
         try:
+            # get counseling data
             conn = get_db_connection()
             cur = conn.cursor()
 
@@ -168,8 +169,57 @@ def counseling(counseling_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404) 
+            
+            # get student name
+            payload = {
+                "limit": "1000",
+                "page": "1",
+                "filters": [
+                    {
+                        "operator": "contains",
+                        "search": "subject_code",
+                        "value1": "bimbingan_konseling"
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "student_code",
+                        "value1": data["student_code"]
+                    }
+                ],
+                "filter_type": "AND"
+            }
+        
+            headers = {
+                    'token': request.headers.get('token'),
+                    'Content-Type': 'application/json',
+                    'accept': 'application/json',
+                    'Proxy-Authorization': 'http://192.168.100.104:7001',
+                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+                }
+            
+            url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+
+            response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=3)
+
+            success = response.ok
+            if(not success):
+                return make_response({
+                    "message": "Data tidak ditemukan"
+                }, 401)
+            datas = response.json()
+            dataStundent = datas["data"]
+
+            if(len(dataStundent) == 0):
+                return make_response({
+                    "success": False,
+                    "message": "Data siswa tidak ditemukan"
+                }, 404) 
+            
+            dataJSON = counselingJson(data)
+            dataJSON.update({"student_name": dataStundent[0]["student_name"]})
+
             return make_response(jsonify({
-                "data":counselingJson(data),
+                "data":dataJSON,
                 "success": True}), 200)
         except psycopg2.Error as error:
             return make_response(jsonify({
