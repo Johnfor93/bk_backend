@@ -31,6 +31,22 @@ def counselingJson(item):
         "counseling_note"       : item["counseling_note"]
     }
 
+def counselingHistoryJson(item):
+    return {
+        "counseling_code"       : item["counseling_code"],
+        "student_code"          : item["student_code"],
+        "scope_code"            : item["scope_code"],
+        "scope_name"            : item["scope_name"],
+        "category_code"         : item["category_code"],
+        "category_name"         : item["category_name"],
+        "employee_code"         : item["employee_code"],
+        "counseling_date"       : item["counseling_date"],
+        "problem"               : item["problem"],
+        "conclusion"            : item["conclusion"],
+        "followup"              : item["followup"],
+        "counseling_note"       : item["counseling_note"]
+    }
+
 def counselingPagingFormatJSON(item, nameStudent):
     return {
         "counseling_code"       : item["counseling_code"],
@@ -555,7 +571,7 @@ def employee_pagination_counseling():
             "message": error.pgerror,
         }), 400)
     
-@bp.route("/counseling/history/<student_code>", methods=["POST"])
+@bp.route("/counseling/history/<student_code>", methods=["GET"])
 @employee_required
 def historyStudent(student_code):
     try:
@@ -585,7 +601,7 @@ def historyStudent(student_code):
             }, 404) 
         dataJSON = []
         for data in datas:
-            dataJSON.append(counselingJson(data))
+            dataJSON.append(counselingHistoryJson(data))
 
         return make_response(jsonify({
             "data":dataJSON,
