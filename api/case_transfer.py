@@ -145,15 +145,19 @@ def case_transfer(case_transfer_code):
             # get case_transfer data
             conn = get_db_connection()
             cur = conn.cursor()
+            print("MASUKKK")
 
             cur.execute("""
-                SELECT
+            SELECT
                 case_transfer_code,
                 student_code,
                 m_provider.provider_code,
                 m_provider.provider_name,
+                employee_code,
                 case_transfer_date,
-                result
+                result,
+                followup,
+                case_transfer_note
             FROM
                 t_case_transfer
                 INNER JOIN m_provider on m_provider.provider_code = t_case_transfer.provider_code
