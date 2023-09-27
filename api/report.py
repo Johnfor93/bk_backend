@@ -147,6 +147,15 @@ def overviewClassReport():
         dataStudent = datas["data"]
 
         cur.execute("""
+            CREATE TEMP TABLE students(student_code VARCHAR(40), student_name VARCHAR(40))
+        """)
+
+        for item in dataStudent:
+            cur.execute("""
+                INSERT INTO students VALUES (%s, %s)
+            """, (item["student_code"], item["student_name"],))
+
+        cur.execute("""
             SELECT
                 student_list.student_code,
                 student_list.student_name,
@@ -183,19 +192,9 @@ def overviewClassReport():
             LEFT JOIN (
                 select student_code, conclusion from t_counseling 
                 full join(select student_code, conclusion from t_consultation) as xx using(student_code, conclusion)
-                full join(select student_code, "result" as conclusion from t_visit) as yy using(student_code, conclusion)) as uuu on uuu.student_code = bb.student_code)
-            GROUP BY bb.student_code
-            ) as description_list on student_list.student_code = description_list.student_code
-            where
-            GROUP BY student_list.student_code, description_list.deskripsi, student_list.student_name
-        """)
-
-        for item in dataStudent:
-            cur.execute("""
-                INSERT INTO students VALUES (%s, %s)
-            """, (item["student_code"], item["student_name"],))
-
-        cur.execute("SELECT * FROM students")
+                full join(select student_code, "result" as conclusion from t_visit) as yy using(student_code, conclusion)) as uuu on uuu.student_code = bb.student_code 
+            GROUP BY bb.student_code) as description_list on student_list.student_code = description_list.student_code
+            GROUP BY student_list.student_code, description_list.deskripsi, student_list.student_name""", (dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,))
         dataOverview = cur.fetchall()
         cur.close()
         conn.close()
