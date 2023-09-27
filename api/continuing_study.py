@@ -530,9 +530,17 @@ def employee_pagination_continuing_study():
 def historyStudent(student_code):
     try:
         # Get Employee Data
-        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+        headers = {
+            'token': request.headers.get('token'),
+            'Content-Type': 'application/json',
+            'accept': 'application/json',
+            'Proxy-Authorization': 'https://jpayroll.pppkpetra.sch.id',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+        }
 
-        response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=3)
+        url = ("https://jpayroll.pppkpetra.sch.id/thirdparty/API_Get_Employee_Profile.php")
+
+        response = requests.get(url, headers=headers, timeout=3)
 
         success = response.ok
         if(not success):
