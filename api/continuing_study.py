@@ -525,7 +525,7 @@ def employee_pagination_continuing_study():
             "message": error.pgerror,
         }), 400)
     
-@bp.route("/continuing_study/history/<student_code>", methods=["GET"])
+@bp.route("/continuingstudy/history/<student_code>", methods=["GET"])
 @employee_required
 def historyStudent(student_code):
     try:
@@ -540,19 +540,15 @@ def historyStudent(student_code):
 
         url = ("https://jpayroll.pppkpetra.sch.id/thirdparty/API_Get_Employee_Profile.php")
 
-        response = requests.get(url, headers=headers, timeout=3)
+        response = requests.get(url, headers=headers)
 
-        success = response.ok
-        if(not success):
-            return make_response({
-                "message": "Data tidak ditemukan"
-            }, 401)
         datas = response.json()
         dataEmployees = datas["data"]
         employeeDictName = dict()
 
         for employee in dataEmployees:
             employeeDictName.update({employee["NIK"]: employee["Name"]})
+            
         # get continuing_study data
         conn = get_db_connection()
         cur = conn.cursor()
@@ -569,9 +565,7 @@ def historyStudent(student_code):
                 m_university.university_name,
                 employee_code,
                 continuing_study_date,
-                problem,
-                conclusion,
-                followup,
+                result,
                 continuing_study_note
             FROM 
                 t_continuing_study

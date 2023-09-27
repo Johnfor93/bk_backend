@@ -575,6 +575,26 @@ def employee_pagination_counseling():
 @employee_required
 def historyStudent(student_code):
     try:
+        # Get Employee Data
+        headers = {
+            'token': request.headers.get('token'),
+            'Content-Type': 'application/json',
+            'accept': 'application/json',
+            'Proxy-Authorization': 'https://jpayroll.pppkpetra.sch.id',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+        }
+
+        url = ("https://jpayroll.pppkpetra.sch.id/thirdparty/API_Get_Employee_Profile.php")
+
+        response = requests.get(url, headers=headers)
+
+        datas = response.json()
+        dataEmployees = datas["data"]
+        employeeDictName = dict()
+
+        for employee in dataEmployees:
+            employeeDictName.update({employee["NIK"]: employee["Name"]})
+
         # get counseling data
         conn = get_db_connection()
         cur = conn.cursor()
@@ -610,7 +630,9 @@ def historyStudent(student_code):
             }, 404) 
         dataJSON = []
         for data in datas:
-            dataJSON.append(counselingHistoryJson(data))
+            JSONResponseFormat = counselingHistoryJson(data)
+            JSONResponseFormat.update({"employee_name": employeeDictName[data["employee_code"]]})
+            dataJSON.append(JSONResponseFormat)
 
         return make_response(jsonify({
             "data":dataJSON,
