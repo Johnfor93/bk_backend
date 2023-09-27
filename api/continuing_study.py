@@ -529,6 +529,22 @@ def employee_pagination_continuing_study():
 @employee_required
 def historyStudent(student_code):
     try:
+        # Get Employee Data
+        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+
+        response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=3)
+
+        success = response.ok
+        if(not success):
+            return make_response({
+                "message": "Data tidak ditemukan"
+            }, 401)
+        datas = response.json()
+        dataEmployees = datas["data"]
+        employeeDictName = dict()
+
+        for employee in dataEmployees:
+            employeeDictName.update({employee["NIK"]: employee["Name"]})
         # get continuing_study data
         conn = get_db_connection()
         cur = conn.cursor()
@@ -567,7 +583,9 @@ def historyStudent(student_code):
             }, 404) 
         dataJSON = []
         for data in datas:
-            dataJSON.append(continuing_studyJson(data))
+            JSONResponseFormat = continuing_studyJson(data)
+            JSONResponseFormat.update({"employee_name": employeeDictName[data["employee_code"]]})
+            dataJSON.append(JSONResponseFormat)
 
         return make_response(jsonify({
             "data":dataJSON,
