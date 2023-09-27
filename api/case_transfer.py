@@ -547,7 +547,7 @@ def employee_pagination_case_transfer():
             "message": error.pgerror,
         }), 400)
     
-@bp.route("/case_transfer/history/<student_code>", methods=["GET"])
+@bp.route("/casetransfer/history/<student_code>", methods=["GET"])
 @employee_required
 def historyStudent(student_code):
     try:
