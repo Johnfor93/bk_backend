@@ -82,9 +82,19 @@ def overviewClassReport():
         monthnow = timenow.month
 
         if(monthnow >= 7):
-            periodYear = str(yearnow)+"/"+str(yearnow+1)
+            periodStart = yearnow
+            periodEnd = yearnow+1
         else:
-            periodYear = str(yearnow-1)+"/"+str(yearnow)
+            periodStart = yearnow-1
+            periodEnd = yearnow
+
+        periodYear = str(periodStart)+"/"+str(periodEnd)
+
+        dateStartFirst = str(periodStart)+"-07-01"
+        dateEndFirst = str(periodStart)+"-12-31"
+        dateStartSecond = str(periodEnd)+"-01-01"
+        dateEndSecond = str(periodEnd)+"-06-30"
+
         limit = '1000'
 
         payload = {
@@ -136,11 +146,53 @@ def overviewClassReport():
         datas = response.json()
         dataStudent = datas["data"]
 
-        cur.execute("CREATE TEMP TABLE students(student_code VARCHAR(40), student_name VARCHAR(40))")
+        cur.execute("""
+            SELECT
+                student_list.student_code,
+                student_list.student_name,
+                (select count(*) from t_counseling bb where category_code='1' and scope_code='1' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x11,
+                (select count(*) from t_counseling bb where category_code='1' and scope_code='2' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x12,
+                (select count(*) from t_counseling bb where category_code='1' and scope_code='3' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x13,
+                (select count(*) from t_counseling bb where category_code='1' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x14,
+                (select count(*) from t_counseling bb where category_code='2' and scope_code='1' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x21,
+                (select count(*) from t_counseling bb where category_code='2' and scope_code='2' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x22,
+                (select count(*) from t_counseling bb where category_code='2' and scope_code='3' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x23,
+                (select count(*) from t_counseling bb where category_code='2' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x24,
+                (select count(*) from t_counseling bb where category_code='3' and scope_code='1' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x31,
+                (select count(*) from t_counseling bb where category_code='3' and scope_code='2' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x32,
+                (select count(*) from t_counseling bb where category_code='3' and scope_code='3' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x33,
+                (select count(*) from t_counseling bb where category_code='3' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x34,
+                (select count(*) from t_counseling bb where category_code='4' and scope_code='1' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x41,
+                (select count(*) from t_counseling bb where category_code='4' and scope_code='2' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x42,
+                (select count(*) from t_counseling bb where category_code='4' and scope_code='3' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x43,
+                (select count(*) from t_counseling bb where category_code='4' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as x44,
+                (select count(*) from t_counseling bb where bb.student_code = student_list.student_code and counseling_date between %s and %s) as counseling_freq_first,
+                (select count(*) from t_counseling bb where bb.student_code = student_list.student_code and counseling_date between %s and %s) as counseling_freq_second,
+                (select count(*) from t_consultation bb where bb.student_code = student_list.student_code and consultation_date between %s and %s) as consultation_freq_first,
+                (select count(*) from t_consultation bb where bb.student_code = student_list.student_code and consultation_date between %s and %s) as consultation_freq_second,
+                (select count(*) from t_visit bb where bb.student_code = student_list.student_code and visit_date between %s and %s) as visit_freq_first,
+                (select count(*) from t_visit bb where bb.student_code = student_list.student_code and visit_date between %s and %s) as visit_freq_second,
+                description_list.deskripsi
+            FROM
+                students as student_list
+            INNER JOIN
+            (
+            SELECT bb.student_code, ARRAY_AGG(conclusion) as deskripsi
+            FROM 
+                students as bb
+            LEFT JOIN (
+                select student_code, conclusion from t_counseling 
+                full join(select student_code, conclusion from t_consultation) as xx using(student_code, conclusion)
+                full join(select student_code, "result" as conclusion from t_visit) as yy using(student_code, conclusion)) as uuu on uuu.student_code = bb.student_code)
+            GROUP BY bb.student_code
+            ) as description_list on student_list.student_code = description_list.student_code
+            where
+            GROUP BY student_list.student_code, description_list.deskripsi, student_list.student_name
+        """)
 
         for item in dataStudent:
             cur.execute("""
-                INSERT INTO student VALUES (%s %s)
+                INSERT INTO students VALUES (%s, %s)
             """, (item["student_code"], item["student_name"],))
 
         cur.execute("SELECT * FROM students")
@@ -155,10 +207,10 @@ def overviewClassReport():
                 "student_name": data["student_name"]
             })
         return make_response(jsonify({
-            "data": "listOverview"
+            "data": listOverview
         }), 200)
     except psycopg2.Error as error:
-        print(error)
+        print("------------------\nERROR: " + str(error))
         return util.log_response({
             "success": False,
             "message": error.pgerror,
