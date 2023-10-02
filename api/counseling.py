@@ -766,6 +766,8 @@ def overviewClassReport(classroom_code, organization_code):
                 INNER JOIN students ON t_counseling.student_code = students.student_code
             WHERE
                 counseling_date BETWEEN %s AND %s
+            ORDER BY
+                students.student_name
         """, (dateStartFirst, dateEndSecond,))
 
         classReportDatas = cur.fetchall()
