@@ -179,21 +179,11 @@ def overviewClassReport(classroom_code, organization_code):
                 (select count(*) from t_consultation bb where bb.student_code = student_list.student_code and consultation_date between %s and %s) as consultation_freq_first,
                 (select count(*) from t_consultation bb where bb.student_code = student_list.student_code and consultation_date between %s and %s) as consultation_freq_second,
                 (select count(*) from t_visit bb where bb.student_code = student_list.student_code and visit_date between %s and %s) as visit_freq_first,
-                (select count(*) from t_visit bb where bb.student_code = student_list.student_code and visit_date between %s and %s) as visit_freq_second,
-                description_list.description
+                (select count(*) from t_visit bb where bb.student_code = student_list.student_code and visit_date between %s and %s) as visit_freq_second
             FROM
                 students as student_list
-            INNER JOIN
-            (
-            SELECT bb.student_code, ARRAY_AGG(conclusion) as description
-            FROM 
-                students as bb
-            LEFT JOIN (
-                select student_code, conclusion from t_counseling 
-                full join(select student_code, conclusion from t_consultation) as xx using(student_code, conclusion)
-                full join(select student_code, "result" as conclusion from t_visit) as yy using(student_code, conclusion)) as uuu on uuu.student_code = bb.student_code 
-            GROUP BY bb.student_code) as description_list on student_list.student_code = description_list.student_code
-            GROUP BY student_list.student_code, description_list.description, student_list.student_name""", (dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,))
+            
+            GROUP BY student_list.student_code, student_list.student_name""", (dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,))
         dataOverview = cur.fetchall()
         cur.close()
         conn.close()
@@ -225,7 +215,7 @@ def overviewClassReport(classroom_code, organization_code):
                 "consultation_freq_second" : data["consultation_freq_second"],
                 "visit_freq_first" : data["visit_freq_first"],
                 "visit_freq_second" : data["visit_freq_second"],
-                "description" : data["description"]
+                # "description" : myDescripition
             })
         return make_response(jsonify({
             "data": listOverview

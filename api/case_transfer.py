@@ -34,6 +34,7 @@ def case_transferReportJson(item):
     return {
         "case_transfer_code"     : item["case_transfer_code"],
         "student_code"          : item["student_code"],
+        "student_name"          : item["student_name"],
         "provider_code"            : item["provider_code"],
         "provider_name"            : item["provider_name"],
         "employee_code"         : item["employee_code"],
@@ -713,9 +714,13 @@ def overviewClassReport(classroom_code, organization_code):
                 case_transfer_code,
                 students.student_code,
                 students.student_name,
-                provider_name,
+                m_provider.provider_code,
+                m_provider.provider_name,
+                employee_code,
                 case_transfer_date,
-                result
+                result,
+                followup,
+                case_transfer_note
             FROM
                 t_case_transfer
                 INNER JOIN m_provider on m_provider.provider_code = t_case_transfer.provider_code
@@ -730,7 +735,7 @@ def overviewClassReport(classroom_code, organization_code):
 
         classReportJSON = list()
 
-        for data in classReportDatas():
+        for data in classReportDatas:
             classReportJSON.append(case_transferReportJson(data))
 
         return make_response(jsonify({

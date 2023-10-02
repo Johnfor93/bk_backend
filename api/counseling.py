@@ -774,7 +774,7 @@ def overviewClassReport(classroom_code, organization_code):
 
         classReportJSON = list()
 
-        for data in classReportDatas():
+        for data in classReportDatas:
             classReportJSON.append(counselingReportJson(data))
 
         return make_response(jsonify({

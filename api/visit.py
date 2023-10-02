@@ -670,7 +670,6 @@ def overviewClassReport(classroom_code, organization_code):
                 visit_note
             FROM
                 t_visit
-                INNER JOIN m_provider on m_provider.provider_code = t_visit.provider_code
                 INNER JOIN students ON t_visit.student_code = students.student_code
             WHERE
                 visit_date BETWEEN %s AND %s
@@ -682,7 +681,7 @@ def overviewClassReport(classroom_code, organization_code):
 
         classReportJSON = list()
 
-        for data in classReportDatas():
+        for data in classReportDatas:
             classReportJSON.append(visitReportJson(data))
 
         return make_response(jsonify({
