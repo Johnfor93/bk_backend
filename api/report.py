@@ -68,13 +68,12 @@ def classreport():
             "message": error.pgerror,
         }, 400, request.method)
 
-@bp.route("/classreport/overview", methods=["POST"])
+@bp.route("/classreport/overview/<classroom_code>/<organization_code>")
 @employee_required
-def overviewClassReport():
+def overviewClassReport(classroom_code, organization_code):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        content = request.get_json()
 
         timenow = datetime.now()
 
@@ -114,12 +113,12 @@ def overviewClassReport():
                     {
                         "operator": "contains",
                         "search": "organization_code",
-                        "value1": content["organization_code"]
+                        "value1": organization_code
                     },
                     {
                         "operator": "contains",
                         "search": "classroom_code",
-                        "value1": content["classroom_code"]
+                        "value1": classroom_code
                     }
                 ],
                 "filter_type": "AND"
@@ -162,31 +161,31 @@ def overviewClassReport():
                 (select count(*) from t_counseling bb where category_code='1' and scope_code='1' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as potential_privacy,
                 (select count(*) from t_counseling bb where category_code='1' and scope_code='2' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as potential_social,
                 (select count(*) from t_counseling bb where category_code='1' and scope_code='3' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as potential_study,
-                (select count(*) from t_counseling bb where category_code='1' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as potential_carier,
+                (select count(*) from t_counseling bb where category_code='1' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as potential_carrier,
                 (select count(*) from t_counseling bb where category_code='2' and scope_code='1' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as low_privacy,
                 (select count(*) from t_counseling bb where category_code='2' and scope_code='2' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as low_social,
                 (select count(*) from t_counseling bb where category_code='2' and scope_code='3' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as low_study,
-                (select count(*) from t_counseling bb where category_code='2' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as low_carier,
+                (select count(*) from t_counseling bb where category_code='2' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as low_carrier,
                 (select count(*) from t_counseling bb where category_code='3' and scope_code='1' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as mid_privacy,
                 (select count(*) from t_counseling bb where category_code='3' and scope_code='2' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as mid_social,
                 (select count(*) from t_counseling bb where category_code='3' and scope_code='3' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as mid_study,
-                (select count(*) from t_counseling bb where category_code='3' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as mid_carier,
+                (select count(*) from t_counseling bb where category_code='3' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as mid_carrier,
                 (select count(*) from t_counseling bb where category_code='4' and scope_code='1' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as high_privacy,
                 (select count(*) from t_counseling bb where category_code='4' and scope_code='2' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as high_social,
                 (select count(*) from t_counseling bb where category_code='4' and scope_code='3' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as high_study,
-                (select count(*) from t_counseling bb where category_code='4' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as high_carier,
+                (select count(*) from t_counseling bb where category_code='4' and scope_code='4' and bb.student_code = student_list.student_code and counseling_date between %s and %s) as high_carrier,
                 (select count(*) from t_counseling bb where bb.student_code = student_list.student_code and counseling_date between %s and %s) as counseling_freq_first,
                 (select count(*) from t_counseling bb where bb.student_code = student_list.student_code and counseling_date between %s and %s) as counseling_freq_second,
                 (select count(*) from t_consultation bb where bb.student_code = student_list.student_code and consultation_date between %s and %s) as consultation_freq_first,
                 (select count(*) from t_consultation bb where bb.student_code = student_list.student_code and consultation_date between %s and %s) as consultation_freq_second,
                 (select count(*) from t_visit bb where bb.student_code = student_list.student_code and visit_date between %s and %s) as visit_freq_first,
                 (select count(*) from t_visit bb where bb.student_code = student_list.student_code and visit_date between %s and %s) as visit_freq_second,
-                description_list.deskripsi
+                description_list.description
             FROM
                 students as student_list
             INNER JOIN
             (
-            SELECT bb.student_code, ARRAY_AGG(conclusion) as deskripsi
+            SELECT bb.student_code, ARRAY_AGG(conclusion) as description
             FROM 
                 students as bb
             LEFT JOIN (
@@ -194,7 +193,7 @@ def overviewClassReport():
                 full join(select student_code, conclusion from t_consultation) as xx using(student_code, conclusion)
                 full join(select student_code, "result" as conclusion from t_visit) as yy using(student_code, conclusion)) as uuu on uuu.student_code = bb.student_code 
             GROUP BY bb.student_code) as description_list on student_list.student_code = description_list.student_code
-            GROUP BY student_list.student_code, description_list.deskripsi, student_list.student_name""", (dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,))
+            GROUP BY student_list.student_code, description_list.description, student_list.student_name""", (dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond, dateStartFirst, dateEndSecond,dateStartFirst, dateEndSecond, dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,dateStartFirst, dateEndFirst, dateStartSecond, dateEndSecond,))
         dataOverview = cur.fetchall()
         cur.close()
         conn.close()
@@ -207,26 +206,26 @@ def overviewClassReport():
                 "potential_privacy" : data["potential_privacy"],
                 "potential_social" : data["potential_social"],
                 "potential_study" : data["potential_study"],
-                "potential_carier" : data["potential_carier"],
+                "potential_carrier" : data["potential_carrier"],
                 "low_privacy" : data["low_privacy"],
                 "low_social" : data["low_social"],
                 "low_study" : data["low_study"],
-                "low_carier" : data["low_carier"],
+                "low_carrier" : data["low_carrier"],
                 "mid_privacy" : data["mid_privacy"],
                 "mid_social" : data["mid_social"],
                 "mid_study" : data["mid_study"],
-                "mid_carier" : data["mid_carier"],
+                "mid_carrier" : data["mid_carrier"],
                 "high_privacy" : data["high_privacy"],
                 "high_social" : data["high_social"],
                 "high_study" : data["high_study"],
-                "high_carier" : data["high_carier"],
+                "high_carrier" : data["high_carrier"],
                 "counseling_freq_first" : data["counseling_freq_first"],
                 "counseling_freq_second" : data["counseling_freq_second"],
                 "consultation_freq_first" : data["consultation_freq_first"],
                 "consultation_freq_second" : data["consultation_freq_second"],
                 "visit_freq_first" : data["visit_freq_first"],
                 "visit_freq_second" : data["visit_freq_second"],
-                "deskripsi" : data["deskripsi"]
+                "description" : data["description"]
             })
         return make_response(jsonify({
             "data": listOverview
