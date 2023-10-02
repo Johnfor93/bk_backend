@@ -31,6 +31,23 @@ def continuing_studyJson(item):
         "result"                    : item["result"],
         "continuing_study_note"     : item["continuing_study_note"]
     }
+
+def continuing_studyReportJson(item):
+    return {
+        "continuing_study_code"     : item["continuing_study_code"],
+        "student_code"              : item["student_code"],
+        "student_name"              : item["student_name"],
+        "study_program_code"        : item["study_program_code"],
+        "study_program_name"        : item["study_program_name"],
+        "faculty_code"              : item["faculty_code"],
+        "faculty_name"              : item["faculty_name"],
+        "university_code"           : item["university_code"],
+        "university_name"           : item["university_name"],
+        "employee_code"             : item["employee_code"],
+        "continuing_study_date"     : item["continuing_study_date"],
+        "result"                    : item["result"],
+        "continuing_study_note"     : item["continuing_study_note"]
+    }
     
 def continuing_studyPagingFormatJSON(item, nameStudent):
     return {
@@ -591,6 +608,133 @@ def historyStudent(student_code):
 
         return make_response(jsonify({
             "data":dataJSON,
+            "success": True}), 200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)
+    
+@bp.route("/classreport/continuing_study/<classroom_code>/<organization_code>")
+@employee_required
+def overviewClassReport(classroom_code, organization_code):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        timenow = datetime.now()
+
+        yearnow = timenow.year
+        monthnow = timenow.month
+
+        if(monthnow >= 7):
+            periodStart = yearnow
+            periodEnd = yearnow+1
+        else:
+            periodStart = yearnow-1
+            periodEnd = yearnow
+
+        periodYear = str(periodStart)+"/"+str(periodEnd)
+
+        dateStartFirst = str(periodStart)+"-07-01"
+        dateEndSecond = str(periodEnd)+"-06-30"
+
+        limit = '1000'
+
+        payload = {
+                "limit": limit,
+                "page": 1,
+                "filters": [
+                    {
+                        "operator": "contains",
+                        "search": "subject_code",
+                        "value1": "bimbingan_konseling"
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "period_code",
+                        "value1": periodYear
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "organization_code",
+                        "value1": organization_code
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "classroom_code",
+                        "value1": classroom_code
+                    }
+                ],
+                "filter_type": "AND"
+            }
+        
+        headers = {
+                'token': request.headers.get('token'),
+                'Content-Type': 'application/json',
+                'Accept': '*',
+                'Proxy-Authorization': 'http://192.168.100.104:7001',
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+            }
+        
+        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+
+        response = requests.post(url, data=json.dumps(payload), headers=headers)
+        
+        if(response.status_code != 200):
+            return util.log_response({
+                "success": False,
+                "message": "Laman tidak dapat diakses",
+            }, 400, request.method)
+            
+        datas = response.json()
+        dataStudent = datas["data"]
+
+        cur.execute("""
+            CREATE TEMP TABLE students(student_code VARCHAR(40), student_name VARCHAR(40))
+        """)
+
+        for item in dataStudent:
+            cur.execute("""
+                INSERT INTO students VALUES (%s, %s)
+            """, (item["student_code"], item["student_name"],))
+
+        cur.execute("""
+            SELECT 
+                continuing_study_code,
+                students.student_code,
+                students.student_name,
+                m_study_program.study_program_code,
+                m_study_program.study_program_name,
+                m_faculty.faculty_code,
+                m_faculty.faculty_name,
+                m_university.university_code,
+                m_university.university_name,
+                employee_code,
+                continuing_study_date,
+                result,
+                continuing_study_note
+            FROM 
+                t_continuing_study
+                INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
+                INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
+                INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
+                INNER JOIN students ON t_continuing_study.student_code = students.student_code
+            WHERE
+                continuing_study_date BETWEEN %s AND %s
+        """, (dateStartFirst, dateEndSecond,))
+
+        classReportDatas = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        classReportJSON = list()
+
+        for data in classReportDatas():
+            classReportJSON.append(continuing_studyReportJson(data))
+
+        return make_response(jsonify({
+            "data":classReportJSON,
             "success": True}), 200)
     except psycopg2.Error as error:
         return make_response(jsonify({

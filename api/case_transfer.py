@@ -30,6 +30,19 @@ def case_transferJson(item):
         "case_transfer_note"     : item["case_transfer_note"]
     }
 
+def case_transferReportJson(item):
+    return {
+        "case_transfer_code"     : item["case_transfer_code"],
+        "student_code"          : item["student_code"],
+        "provider_code"            : item["provider_code"],
+        "provider_name"            : item["provider_name"],
+        "employee_code"         : item["employee_code"],
+        "case_transfer_date"     : item["case_transfer_date"],
+        "result"            : item["result"],
+        "followup"              : item["followup"],
+        "case_transfer_note"     : item["case_transfer_note"]
+    }
+
 def case_transferPagingFormatJSON(item, nameStudent):
     return {
         "case_transfer_code"       : item["case_transfer_code"],
@@ -604,6 +617,124 @@ def historyStudent(student_code):
 
         return make_response(jsonify({
             "data":dataJSON,
+            "success": True}), 200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)
+    
+@bp.route("/classreport/case_transfer/<classroom_code>/<organization_code>")
+@employee_required
+def overviewClassReport(classroom_code, organization_code):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        timenow = datetime.now()
+
+        yearnow = timenow.year
+        monthnow = timenow.month
+
+        if(monthnow >= 7):
+            periodStart = yearnow
+            periodEnd = yearnow+1
+        else:
+            periodStart = yearnow-1
+            periodEnd = yearnow
+
+        periodYear = str(periodStart)+"/"+str(periodEnd)
+
+        dateStartFirst = str(periodStart)+"-07-01"
+        dateEndSecond = str(periodEnd)+"-06-30"
+
+        limit = '1000'
+
+        payload = {
+                "limit": limit,
+                "page": 1,
+                "filters": [
+                    {
+                        "operator": "contains",
+                        "search": "subject_code",
+                        "value1": "bimbingan_konseling"
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "period_code",
+                        "value1": periodYear
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "organization_code",
+                        "value1": organization_code
+                    },
+                    {
+                        "operator": "contains",
+                        "search": "classroom_code",
+                        "value1": classroom_code
+                    }
+                ],
+                "filter_type": "AND"
+            }
+        
+        headers = {
+                'token': request.headers.get('token'),
+                'Content-Type': 'application/json',
+                'Accept': '*',
+                'Proxy-Authorization': 'http://192.168.100.104:7001',
+                'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+            }
+        
+        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+
+        response = requests.post(url, data=json.dumps(payload), headers=headers)
+        
+        if(response.status_code != 200):
+            return util.log_response({
+                "success": False,
+                "message": "Laman tidak dapat diakses",
+            }, 400, request.method)
+            
+        datas = response.json()
+        dataStudent = datas["data"]
+
+        cur.execute("""
+            CREATE TEMP TABLE students(student_code VARCHAR(40), student_name VARCHAR(40))
+        """)
+
+        for item in dataStudent:
+            cur.execute("""
+                INSERT INTO students VALUES (%s, %s)
+            """, (item["student_code"], item["student_name"],))
+
+        cur.execute("""
+            SELECT
+                case_transfer_code,
+                students.student_code,
+                students.student_name,
+                provider_name,
+                case_transfer_date,
+                result
+            FROM
+                t_case_transfer
+                INNER JOIN m_provider on m_provider.provider_code = t_case_transfer.provider_code
+                INNER JOIN students ON t_case_transfer.student_code = students.student_code
+            WHERE
+                case_transfer_date BETWEEN %s AND %s
+        """, (dateStartFirst, dateEndSecond,))
+
+        classReportDatas = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        classReportJSON = list()
+
+        for data in classReportDatas():
+            classReportJSON.append(case_transferReportJson(data))
+
+        return make_response(jsonify({
+            "data":classReportJSON,
             "success": True}), 200)
     except psycopg2.Error as error:
         return make_response(jsonify({
