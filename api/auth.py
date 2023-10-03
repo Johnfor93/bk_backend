@@ -76,10 +76,10 @@ def login():
         headers = {
             'Content-Type': 'application/json',
             'Accept': '*',
-            'Proxy-Authorization': 'http://192.168.100.106:7002',
+            'Proxy-Authorization': current_app.config["LOGIN_SERVICES"],
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
         }
-        url = ("http://192.168.100.106:7002/user_login/")
+        url = (current_app.config["LOGIN_SERVICES"]+"/user_login/")
         hashed_key = hashlib.md5(content["user_key"].encode()).hexdigest()
         payload = {
             "user_code" : content["user_code"],
@@ -106,7 +106,7 @@ def employee_login():
         "employee_code" :  content["employee_code"],
         "employee_key" : content["employee_key"]
     }
-    response = requests.post("http://192.168.100.106:7002/employee_login", headers = {'Content-Type' : 'application/json'}, json = payload)
+    response = requests.post(current_app.config["LOGIN_SERVICES"]+"/employee_login", headers = {'Content-Type' : 'application/json'}, json = payload)
     
     if 'token' not in response.json():
         return make_response({

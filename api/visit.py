@@ -190,11 +190,11 @@ def visit(visit_code):
                     'token': request.headers.get('token'),
                     'Content-Type': 'application/json',
                     'accept': 'application/json',
-                    'Proxy-Authorization': 'http://192.168.100.104:7001',
+                    'Proxy-Authorization': current_app.config['STUDENT_SERVICES'],
                     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
                 }
             
-            url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+            url = (current_app.config['STUDENT_SERVICES']+"/employee_education_detail_paging")
 
             response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=3)
 
@@ -456,11 +456,11 @@ def employee_pagination_visit():
                 'token': request.headers.get('token'),
                 'Content-Type': 'application/json',
                 'accept': 'application/json',
-                'Proxy-Authorization': 'http://192.168.100.104:7001',
+                'Proxy-Authorization': current_app.config['STUDENT_SERVICES'],
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
             }
         
-        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+        url = (current_app.config['STUDENT_SERVICES']+"/employee_education_detail_paging")
 
         response = requests.post(url, data=json.dumps(payload), headers=headers, timeout=3)
 
@@ -631,11 +631,11 @@ def overviewClassReport(classroom_code, organization_code):
                 'token': request.headers.get('token'),
                 'Content-Type': 'application/json',
                 'Accept': '*',
-                'Proxy-Authorization': 'http://192.168.100.104:7001',
+                'Proxy-Authorization': current_app.config['STUDENT_SERVICES'],
                 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
             }
         
-        url = ("http://192.168.100.104:7001/employee_education_detail_paging")
+        url = (current_app.config['STUDENT_SERVICES']+"/employee_education_detail_paging")
 
         response = requests.post(url, data=json.dumps(payload), headers=headers)
         

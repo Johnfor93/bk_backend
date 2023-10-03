@@ -8,6 +8,8 @@ app = Flask(__name__)
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
 app.config['MAX_SIZE_FILE'] = 1024*1024
+app.config['STUDENT_SERVICES'] = os.environ.get("STUDENT_SERVICES")
+app.config['LOGIN_SERVICES'] = os.environ.get("LOGIN_SERVICES")
 
 path = os.getcwd()
 UPLOAD_FOLDER = os.path.join(path, 'uploads')
