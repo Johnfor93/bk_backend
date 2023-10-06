@@ -27,7 +27,8 @@ def consultationJson(item):
         "problem"               : item["problem"],
         "conclusion"            : item["conclusion"],
         "followup"              : item["followup"],
-        "consultation_note"     : item["consultation_note"]
+        "consultation_note"     : item["consultation_note"],
+        "create_date"           : item["create_date"]
     }
 
 def consultationHistoryJson(item):
@@ -493,11 +494,6 @@ def employee_pagination_consultation():
                         "operator": "contains",
                         "search": "subject_code",
                         "value1": "bimbingan_konseling"
-                    },
-                    {
-                        "operator": "contains",
-                        "search": "student_name",
-                        "value1": student_search
                     }
                 ],
                 "filter_type": "AND"
@@ -521,13 +517,18 @@ def employee_pagination_consultation():
                 "message": "Data tidak ditemukan"
             }, 401)
         datas = response.json()
-        dataStundent = datas["data"]
+        dataStudent = datas["data"]
         nameStudent = dict()
-        listStundent = list()
+        listStudent = list()
+        listFilteredStudent = list()
 
-        for data in dataStundent: 
+        for data in dataStudent: 
             nameStudent.update({data["student_code"]: data["student_name"]})
-            listStundent.append(data["student_code"])
+            if (student_search in data["student_code"]) or (student_search in data["student_name"]):
+                listFilteredStudent.append(data["student_code"])
+            listStudent.append(data["student_code"])
+
+        like_pattern = '%{}%'.format(student_search)
 
         sql = """
             SELECT
@@ -540,7 +541,7 @@ def employee_pagination_consultation():
                 t_consultation
                 INNER JOIN m_scope ON t_consultation.scope_code = m_scope.scope_code
             WHERE
-                student_code = ANY(%s)
+                student_code = ANY(%s) OR (consultation_code LIKE %s AND student_code = ANY(%s))
             ORDER BY
                 consultation_date DESC
             LIMIT
@@ -549,7 +550,7 @@ def employee_pagination_consultation():
                 """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
             """
         
-        cur.execute(sql, (list(listStundent),))
+        cur.execute(sql, (list(listFilteredStudent), like_pattern, list(listStudent)))
         datas = cur.fetchall()
         cur.close()
         conn.close()

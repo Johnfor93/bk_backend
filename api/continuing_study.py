@@ -29,6 +29,7 @@ def continuing_studyJson(item):
         "employee_code"             : item["employee_code"],
         "continuing_study_date"     : item["continuing_study_date"],
         "result"                    : item["result"],
+        "create_date"               : item["create_date"],
         "continuing_study_note"     : item["continuing_study_note"]
     }
 
@@ -68,6 +69,7 @@ def continuing_studys():
             conn = get_db_connection()
             cur = conn.cursor()
             content = request.form
+            uploaded_file = request.files
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
@@ -119,6 +121,7 @@ def continuing_studys():
                     t_continuing_study
                 VALUES
                     (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING *
             """, (
                 continuing_study_code,
                 content['student_code'],
@@ -134,8 +137,15 @@ def continuing_studys():
                 datetime.now())
             )
             conn.commit()
+            inserted_id = cur.fetchone()
             cur.close()
             conn.close()
+
+            if(len(uploaded_file['attachment'].filename) != 0):
+                uploaded_file = uploaded_file['attachment']
+                uploaded_filename = inserted_id["continuing_study_code"] + '.' + uploaded_file.filename.split('.')[-1] 
+                uploaded_file.save(os.path.join(current_app.config['UPLOAD_FOLDER_CONTINUING_STUDY'], uploaded_filename))
+
             return util.log_response({
                 "success": True,
                 "message": "Data sudah dimasukkan"
@@ -168,7 +178,8 @@ def continuing_study(continuing_study_code):
                 employee_code,
                 continuing_study_date,
                 result,
-                continuing_study_note
+                continuing_study_note,
+                t_continuing_study.create_date
             FROM
                 t_continuing_study
                 INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
@@ -248,6 +259,7 @@ def continuing_study(continuing_study_code):
             conn = get_db_connection()
             cur = conn.cursor()
             content = request.form
+            uploaded_file = request.files
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
@@ -322,6 +334,13 @@ def continuing_study(continuing_study_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404, request.method) 
+
+            if(len(uploaded_file['attachment'].filename) != 0):
+                uploaded_file = uploaded_file['attachment']
+                uploaded_filename = dataUpdated["continuing_study_code"] + '.' + uploaded_file.filename.split('.')[-1] 
+                if(os.path.exists((os.path.join(current_app.config['UPLOAD_FOLDER_CONTINUING_STUDY'], uploaded_filename)))):
+                    os.remove(os.path.join(current_app.config['UPLOAD_FOLDER_CONTINUING_STUDY'], uploaded_filename))
+                uploaded_file.save(os.path.join(current_app.config['UPLOAD_FOLDER_CONTINUING_STUDY'], uploaded_filename))
 
             return util.log_response({
                 "success": True,
@@ -462,11 +481,6 @@ def employee_pagination_continuing_study():
                         "operator": "contains",
                         "search": "subject_code",
                         "value1": "bimbingan_konseling"
-                    },
-                    {
-                        "operator": "contains",
-                        "search": "student_name",
-                        "value1": student_search
                     }
                 ],
                 "filter_type": "AND"
@@ -490,13 +504,18 @@ def employee_pagination_continuing_study():
                 "message": "Data tidak ditemukan"
             }, 401)
         datas = response.json()
-        dataStundent = datas["data"]
+        dataStudent = datas["data"]
         nameStudent = dict()
-        listStundent = list()
+        listStudent = list()
+        listFilteredStudent = list()
 
-        for data in dataStundent: 
+        for data in dataStudent: 
             nameStudent.update({data["student_code"]: data["student_name"]})
-            listStundent.append(data["student_code"])
+            if (student_search in data["student_code"]) or (student_search in data["student_name"]):
+                listFilteredStudent.append(data["student_code"])
+            listStudent.append(data["student_code"])
+
+        like_pattern = '%{}%'.format(student_search)
 
         sql = """
             SELECT
@@ -512,7 +531,7 @@ def employee_pagination_continuing_study():
                 INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
                 INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
             WHERE
-                student_code = ANY(%s)
+                student_code = ANY(%s) OR (continuing_study_code LIKE %s AND student_code = ANY(%s))
             ORDER BY
                 continuing_study_date DESC
             LIMIT
@@ -521,7 +540,7 @@ def employee_pagination_continuing_study():
                 """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
             """
         
-        cur.execute(sql, (list(listStundent),))
+        cur.execute(sql, (list(listFilteredStudent), like_pattern, list(listStudent)))
         datas = cur.fetchall()
         cur.close()
         conn.close()

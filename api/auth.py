@@ -106,7 +106,7 @@ def employee_login():
         "employee_code" :  content["employee_code"],
         "employee_key" : content["employee_key"]
     }
-    response = requests.post(current_app.config["LOGIN_SERVICES"]+"/employee_login", headers = {'Content-Type' : 'application/json'}, json = payload)
+    response = requests.post(str(current_app.config["LOGIN_SERVICES"])+"/employee_login", headers = {'Content-Type' : 'application/json'}, json = payload)
     
     if 'token' not in response.json():
         return make_response({

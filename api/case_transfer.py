@@ -27,6 +27,7 @@ def case_transferJson(item):
         "case_transfer_date"     : item["case_transfer_date"],
         "result"            : item["result"],
         "followup"              : item["followup"],
+        "create_date"           : item["create_date"],
         "case_transfer_note"     : item["case_transfer_note"]
     }
 
@@ -171,7 +172,8 @@ def case_transfer(case_transfer_code):
                 case_transfer_date,
                 result,
                 followup,
-                case_transfer_note
+                case_transfer_note,
+                t_case_transfer.create_date
             FROM
                 t_case_transfer
                 INNER JOIN m_provider on m_provider.provider_code = t_case_transfer.provider_code
@@ -224,16 +226,16 @@ def case_transfer(case_transfer_code):
                     "message": "Data tidak ditemukan"
                 }, 401)
             datas = response.json()
-            dataStundent = datas["data"]
+            dataStudent = datas["data"]
 
-            if(len(dataStundent) == 0):
+            if(len(dataStudent) == 0):
                 return make_response({
                     "success": False,
                     "message": "Data siswa tidak ditemukan"
                 }, 404) 
             
             dataJSON = case_transferJson(data)
-            dataJSON.update({"student_name": dataStundent[0]["student_name"]})
+            dataJSON.update({"student_name": dataStudent[0]["student_name"]})
 
             return make_response(jsonify({
                 "data":dataJSON,
@@ -484,11 +486,6 @@ def employee_pagination_case_transfer():
                         "operator": "contains",
                         "search": "subject_code",
                         "value1": "bimbingan_konseling"
-                    },
-                    {
-                        "operator": "contains",
-                        "search": "student_name",
-                        "value1": student_search
                     }
                 ],
                 "filter_type": "AND"
@@ -512,13 +509,18 @@ def employee_pagination_case_transfer():
                 "message": "Data tidak ditemukan"
             }, 401)
         datas = response.json()
-        dataStundent = datas["data"]
+        dataStudent = datas["data"]
         nameStudent = dict()
-        listStundent = list()
+        listStudent = list()
+        listFilteredStudent = list()
 
-        for data in dataStundent: 
+        for data in dataStudent: 
             nameStudent.update({data["student_code"]: data["student_name"]})
-            listStundent.append(data["student_code"])
+            if (student_search in data["student_code"]) or (student_search in data["student_name"]):
+                listFilteredStudent.append(data["student_code"])
+            listStudent.append(data["student_code"])
+
+        like_pattern = '%{}%'.format(student_search)
 
         sql = """
             SELECT
@@ -531,7 +533,7 @@ def employee_pagination_case_transfer():
                 t_case_transfer
                 INNER JOIN m_provider on m_provider.provider_code = t_case_transfer.provider_code
             WHERE
-                student_code = ANY(%s)
+                student_code = ANY(%s) OR (case_transfer_code LIKE %s AND student_code = ANY(%s))
             ORDER BY
                 case_transfer_date DESC
             LIMIT
@@ -540,7 +542,7 @@ def employee_pagination_case_transfer():
                 """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
             """
         
-        cur.execute(sql, (list(listStundent),))
+        cur.execute(sql, (list(listFilteredStudent), like_pattern, list(listStudent)))
         datas = cur.fetchall()
         cur.close()
         conn.close()

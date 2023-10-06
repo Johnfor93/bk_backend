@@ -27,6 +27,7 @@ def visitJson(item):
         "reason"         : item["reason"],
         "result"         : item["result"],
         "followup"       : item["followup"],
+        "create_date"    : item["create_date"],
         "visit_note"     : item["visit_note"],
     }
 
@@ -64,6 +65,7 @@ def visits():
             conn = get_db_connection()
             cur = conn.cursor()
             content = request.form
+            uploaded_file = request.files
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
@@ -116,6 +118,7 @@ def visits():
                     t_visit
                 VALUES
                     (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING *
             """, (
                 visit_code,
                 content['student_code'],
@@ -132,8 +135,15 @@ def visits():
                 datetime.now())
             )
             conn.commit()
+            inserted_id = cur.fetchone()
             cur.close()
             conn.close()
+
+            if(len(uploaded_file['attachment'].filename) != 0):
+                uploaded_file = uploaded_file['attachment']
+                uploaded_filename = inserted_id["visit_code"] + '.' + uploaded_file.filename.split('.')[-1] 
+                uploaded_file.save(os.path.join(current_app.config['UPLOAD_FOLDER_VISIT'], uploaded_filename))
+
             return util.log_response({
                 "success": True,
                 "message": "Data sudah dimasukkan"
@@ -230,6 +240,7 @@ def visit(visit_code):
             conn = get_db_connection()
             cur = conn.cursor()
             content = request.form
+            uploaded_file = request.files
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):
@@ -306,6 +317,13 @@ def visit(visit_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404, request.method) 
+
+            if(len(uploaded_file['attachment'].filename) != 0):
+                uploaded_file = uploaded_file['attachment']
+                uploaded_filename = dataUpdated["visit_code"] + '.' + uploaded_file.filename.split('.')[-1] 
+                if(os.path.exists((os.path.join(current_app.config['UPLOAD_FOLDER_VISIT'], uploaded_filename)))):
+                    os.remove(os.path.join(current_app.config['UPLOAD_FOLDER_VISIT'], uploaded_filename))
+                uploaded_file.save(os.path.join(current_app.config['UPLOAD_FOLDER_VISIT'], uploaded_filename))
 
             return util.log_response({
                 "success": True,
@@ -442,11 +460,6 @@ def employee_pagination_visit():
                         "operator": "contains",
                         "search": "subject_code",
                         "value1": "bimbingan_konseling"
-                    },
-                    {
-                        "operator": "contains",
-                        "search": "student_name",
-                        "value1": student_search
                     }
                 ],
                 "filter_type": "AND"
@@ -470,13 +483,18 @@ def employee_pagination_visit():
                 "message": "Data tidak ditemukan"
             }, 401)
         datas = response.json()
-        dataStundent = datas["data"]
+        dataStudent = datas["data"]
         nameStudent = dict()
-        listStundent = list()
+        listStudent = list()
+        listFilteredStudent = list()
 
-        for data in dataStundent: 
+        for data in dataStudent: 
             nameStudent.update({data["student_code"]: data["student_name"]})
-            listStundent.append(data["student_code"])
+            if (student_search in data["student_code"]) or (student_search in data["student_name"]):
+                listFilteredStudent.append(data["student_code"])
+            listStudent.append(data["student_code"])
+
+        like_pattern = '%{}%'.format(student_search)
 
         sql = """
             SELECT
@@ -484,7 +502,7 @@ def employee_pagination_visit():
             FROM
                 t_visit
             WHERE
-                student_code = ANY(%s)
+                student_code = ANY(%s) OR (visit_code LIKE %s AND student_code = ANY(%s))
             ORDER BY
                 visit_date DESC
             LIMIT
@@ -493,7 +511,7 @@ def employee_pagination_visit():
                 """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
             """
         
-        cur.execute(sql, (list(listStundent),))
+        cur.execute(sql, (list(listFilteredStudent), like_pattern, list(listStudent)))
         datas = cur.fetchall()
         cur.close()
         conn.close()

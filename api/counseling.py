@@ -27,6 +27,7 @@ def counselingJson(item):
         "counseling_date"       : item["counseling_date"],
         "problem"               : item["problem"],
         "conclusion"            : item["conclusion"],
+        "create_date"           : item["create_date"],
         "followup"              : item["followup"],
         "counseling_note"       : item["counseling_note"]
     }
@@ -240,16 +241,16 @@ def counseling(counseling_code):
                     "message": "Data tidak ditemukan"
                 }, 401)
             datas = response.json()
-            dataStundent = datas["data"]
+            dataStudent = datas["data"]
 
-            if(len(dataStundent) == 0):
+            if(len(dataStudent) == 0):
                 return make_response({
                     "success": False,
                     "message": "Data siswa tidak ditemukan"
                 }, 404) 
             
             dataJSON = counselingJson(data)
-            dataJSON.update({"student_name": dataStundent[0]["student_name"]})
+            dataJSON.update({"student_name": dataStudent[0]["student_name"]})
 
             return make_response(jsonify({
                 "data":dataJSON,
@@ -509,11 +510,6 @@ def employee_pagination_counseling():
                         "operator": "contains",
                         "search": "subject_code",
                         "value1": "bimbingan_konseling"
-                    },
-                    {
-                        "operator": "contains",
-                        "search": "student_name",
-                        "value1": student_search
                     }
                 ],
                 "filter_type": "AND"
@@ -537,13 +533,18 @@ def employee_pagination_counseling():
                 "message": "Data tidak ditemukan"
             }, 401)
         datas = response.json()
-        dataStundent = datas["data"]
+        dataStudent = datas["data"]
         nameStudent = dict()
-        listStundent = list()
+        listStudent = list()
+        listFilteredStudent = list()
 
-        for data in dataStundent: 
+        for data in dataStudent: 
             nameStudent.update({data["student_code"]: data["student_name"]})
-            listStundent.append(data["student_code"])
+            if (student_search in data["student_code"]) or (student_search in data["student_name"]):
+                listFilteredStudent.append(data["student_code"])
+            listStudent.append(data["student_code"])
+
+        like_pattern = '%{}%'.format(student_search)
 
         sql = """
             SELECT
@@ -558,7 +559,7 @@ def employee_pagination_counseling():
                 INNER JOIN m_scope ON t_counseling.scope_code = m_scope.scope_code
                 INNER JOIN m_category ON t_counseling.category_code = m_category.category_code
             WHERE
-                student_code = ANY(%s)
+                student_code = ANY(%s) OR (counseling_code LIKE %s AND student_code = ANY(%s))
             ORDER BY
                 counseling_date DESC
             LIMIT
@@ -567,7 +568,7 @@ def employee_pagination_counseling():
                 """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
             """
         
-        cur.execute(sql, (list(listStundent),))
+        cur.execute(sql, (list(listFilteredStudent), like_pattern, list(listStudent)))
         datas = cur.fetchall()
         cur.close()
         conn.close()

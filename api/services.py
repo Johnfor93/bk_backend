@@ -41,11 +41,6 @@ def studentList():
                     "operator": "contains",
                     "search": "subject_code",
                     "value1": "bimbingan_konseling"
-                },
-                {
-                    "operator": "contains",
-                    "search": "student_name",
-                    "value1": student_search
                 }
             ],
             "filter_type": "AND"
@@ -70,5 +65,10 @@ def studentList():
         }, 401)
     stats = response.json()
     status_code = response.status_code
-    return make_response(jsonify(stats),status_code)
+    studentList = list()
+
+    for data in stats["data"]:
+        if (student_search in data["student_code"]) or (student_search in data["student_name"]):
+            studentList.append(data)
+    return make_response(jsonify({"data": studentList}),status_code)
 
