@@ -62,8 +62,9 @@ def case_transfers():
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.form
+            content = request.get_json()
             uploaded_file = request.files
+            print(uploaded_file)
 
             error = ""
             if(not('student_code' in content.keys()) or len(content['student_code']) == 0):

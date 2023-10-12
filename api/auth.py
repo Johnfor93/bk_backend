@@ -22,7 +22,6 @@ def token_required(f):
         try:
             login = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
             conn = get_db_connection()
-            print(token)
             cur = conn.cursor()
             cur.execute("""
                 SELECT

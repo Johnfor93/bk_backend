@@ -7,7 +7,7 @@ import psycopg2
 
 from .database import get_db_connection
 from . import util
-from .auth import employee_required
+from .auth import employee_required, token_required
 
 bp = Blueprint("university", __name__)
 
@@ -19,13 +19,13 @@ def universityJson(item):
     }
 
 @bp.route("/universitys", methods=["POST"])
-@employee_required
+@token_required
 def universitys():
     if(request.method == "POST"):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
 
             error = ""
             if(not('university_name' in content.keys()) or len(content['university_name']) == 0):
@@ -72,7 +72,8 @@ def universitys():
             conn.close()
             return util.log_response({
                 "success": True,
-                "message": "Data sudah dimasukkan"
+                "message": "Data sudah dimasukkan",
+                "data": university_code
             }, 200, request.method)
         except psycopg2.Error as error:
             return util.log_response({
@@ -202,7 +203,7 @@ def university(university_code):
             }), 400)
 
 @bp.route("/pagination_university", methods=["POST"])
-@employee_required
+@token_required
 def pagination_university():
     try:
         conn = get_db_connection()
@@ -252,6 +253,63 @@ def pagination_university():
         }, 
         200, request.method)
     except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)
+
+@bp.route("/employee_pagination_university", methods=["POST"])
+@employee_required
+def employee_pagination_university():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        content = request.get_json()
+
+        filter= util.filter(content)
+
+        if(filter==''):
+            sql = """
+                SELECT
+                    *
+                FROM
+                    m_university
+                """ + util.sort(content) + """
+                LIMIT
+                    """ + str(content['limit']) + """
+                OFFSET
+                    """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+                """
+        else:
+            sql = """
+                SELECT
+                    *
+                FROM
+                    m_university
+                WHERE
+                    (""" + util.filter(content) + """) """ + util.sort(content) + """
+                LIMIT
+                    """ + str(content['limit']) + """
+                OFFSET
+                    """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+                """
+        cur.execute(sql)
+        datas = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        universitys = []
+        for data in datas:
+            universitys.append(universityJson(data))
+
+        return make_response(
+        {
+            "data": universitys,
+            "message": "success"
+        }, 
+        200)
+    except psycopg2.Error as error:
+        print(error)
         return make_response(jsonify({
             "success": False,
             "message": error.pgerror,

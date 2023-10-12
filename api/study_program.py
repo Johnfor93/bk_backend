@@ -7,7 +7,7 @@ import psycopg2
 
 from .database import get_db_connection
 from . import util
-from .auth import employee_required
+from .auth import employee_required, token_required
 
 bp = Blueprint("study_program", __name__)
 
@@ -20,13 +20,13 @@ def study_programJson(item):
     }
 
 @bp.route("/study_programs", methods=["POST"])
-@employee_required
+@token_required
 def study_programs():
     if(request.method == "POST"):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
 
             error = ""
             if(not('study_program_name' in content.keys()) or len(content['study_program_name']) == 0):
@@ -209,7 +209,7 @@ def study_program(study_program_code):
                 "message": error.pgerror,
             }), 400)
 
-@bp.route("/pagination_study_program", methods=["POST"])
+@bp.route("/employee_pagination_study_program", methods=["POST"])
 @employee_required
 def pagination_study_program():
     try:
@@ -253,12 +253,12 @@ def pagination_study_program():
         for data in datas:
             study_programs.append(study_programJson(data))
 
-        return util.log_response(
+        return make_response(
         {
             "data": study_programs,
             "message": "success"
         }, 
-        200, request.method)
+        200)
     except psycopg2.Error as error:
         return make_response(jsonify({
             "success": False,
@@ -277,3 +277,73 @@ def study_programAttachment(study_program_code):
         return make_response({
             "success": False
         }, 404)
+
+@bp.route("/pagination_school", methods=["POST"])
+@token_required
+def pagination_school():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        content = request.get_json()
+
+        filter= util.filter(content)
+
+        if(filter==''):
+            sql = """
+                SELECT
+                    faculty_name,
+                    university_name,
+                    study_program_name
+                FROM
+                    m_study_program
+                    INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
+                    INNER JOIN univ_to_faculty ON m_faculty.faculty_code = univ_to_faculty.faculty_code
+                    INNER JOIN m_university ON m_university.university_code = univ_to_faculty.university_code
+                """ + util.sort(content) + """
+                LIMIT
+                    """ + str(content['limit']) + """
+                OFFSET
+                    """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+                """
+        else:
+            sql = """
+                SELECT
+                    faculty_name,
+                    university_name,
+                    study_program_name
+                FROM
+                    m_study_program
+                    INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
+                    INNER JOIN univ_to_faculty ON m_faculty.faculty_code = univ_to_faculty.faculty_code
+                    INNER JOIN m_university ON m_university.university_code = univ_to_faculty.university_code
+                WHERE
+                    (""" + util.filter(content) + """) """ + util.sort(content) + """
+                LIMIT
+                    """ + str(content['limit']) + """
+                OFFSET
+                    """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+                """
+        cur.execute(sql)
+        datas = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        study_programs = []
+        for data in datas:
+            study_programs.append({
+                "university_name" : data["university_name"],
+                "study_program_name" : data["study_program_name"],
+                "faculty_name" : data["faculty_name"],
+            })
+
+        return make_response(jsonify(
+        {
+            "data": study_programs,
+            "message": "success"
+        }), 
+        200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)

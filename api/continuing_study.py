@@ -529,7 +529,8 @@ def employee_pagination_continuing_study():
                 t_continuing_study
                 INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
                 INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
-                INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
+                INNER JOIN univ_to_faculty ON m_faculty.faculty_code = univ_to_faculty.faculty_code
+                INNER JOIN m_university ON m_university.university_code = univ_to_faculty.university_code
             WHERE
                 student_code = ANY(%s) OR (continuing_study_code LIKE %s AND student_code = ANY(%s))
             ORDER BY
@@ -602,12 +603,14 @@ def historyStudent(student_code):
                 employee_code,
                 continuing_study_date,
                 result,
-                continuing_study_note
-            FROM 
+                continuing_study_note,
+                t_continuing_study.create_date
+            FROM
                 t_continuing_study
                 INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
                 INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
-                INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
+                INNER JOIN univ_to_faculty ON m_faculty.faculty_code = univ_to_faculty.faculty_code
+                INNER JOIN m_university ON m_university.university_code = univ_to_faculty.university_code
             WHERE 
                 student_code = %s
         """, (student_code,))
@@ -629,6 +632,7 @@ def historyStudent(student_code):
             "data":dataJSON,
             "success": True}), 200)
     except psycopg2.Error as error:
+        print(error)
         return make_response(jsonify({
             "success": False,
             "message": error.pgerror,
@@ -733,11 +737,12 @@ def overviewClassReport(classroom_code, organization_code):
                 continuing_study_date,
                 result,
                 continuing_study_note
-            FROM 
+            FROM
                 t_continuing_study
                 INNER JOIN m_study_program ON m_study_program.study_program_code = t_continuing_study.study_program_code
                 INNER JOIN m_faculty ON m_study_program.faculty_code = m_faculty.faculty_code
-                INNER JOIN m_university ON m_university.university_code = m_faculty.university_code
+                INNER JOIN univ_to_faculty ON m_faculty.faculty_code = univ_to_faculty.faculty_code
+                INNER JOIN m_university ON m_university.university_code = univ_to_faculty.university_code
                 INNER JOIN students ON t_continuing_study.student_code = students.student_code
             WHERE
                 continuing_study_date BETWEEN %s AND %s

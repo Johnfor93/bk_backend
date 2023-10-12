@@ -7,7 +7,7 @@ import psycopg2
 
 from .database import get_db_connection
 from . import util
-from .auth import employee_required
+from .auth import employee_required, token_required
 
 bp = Blueprint("provider", __name__)
 
@@ -20,13 +20,13 @@ def providerJson(item):
     }
 
 @bp.route("/providers", methods=["POST"])
-@employee_required
+@token_required
 def providers():
     if(request.method == "POST"):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
 
             error = ""
             if(not('provider_name' in content.keys()) or len(content['provider_name']) == 0):
@@ -79,13 +79,14 @@ def providers():
                 "message": "Data sudah dimasukkan"
             }, 200, request.method)
         except psycopg2.Error as error:
+            print(error)
             return util.log_response({
                 "success": False,
                 "message": error.pgerror,
             }, 400, request.method)
 
 @bp.route("/provider/<provider_code>", methods=["GET", "PUT", "DELETE"])
-@employee_required
+@token_required
 def provider(provider_code):
     if(request.method == "GET"):
         try:
@@ -105,7 +106,7 @@ def provider(provider_code):
                     "success": False,
                     "message": "Data tidak ditemukan"
                 }, 404) 
-            return make_response(jsonify(providerJson(data)))
+            return make_response(jsonify({"success": True, "data": providerJson(data)}))
         except psycopg2.Error as error:
             return make_response(jsonify({
                 "success": False,
@@ -116,7 +117,7 @@ def provider(provider_code):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
 
             error = ""
             if(not('provider_name' in content.keys()) or len(content['provider_name']) == 0):
@@ -209,8 +210,65 @@ def provider(provider_code):
                 "message": error.pgerror,
             }), 400)
 
-@bp.route("/pagination_provider", methods=["POST"])
+@bp.route("/employee_pagination_provider", methods=["POST"])
 @employee_required
+def employee_pagination_provider():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        content = request.get_json()
+
+        filter= util.filter(content)
+
+        if(filter==''):
+            sql = """
+                SELECT
+                    *
+                FROM
+                    m_provider
+                """ + util.sort(content) + """
+                LIMIT
+                    """ + str(content['limit']) + """
+                OFFSET
+                    """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+                """
+        else:
+            sql = """
+                SELECT
+                    *
+                FROM
+                    m_provider
+                WHERE
+                    (""" + util.filter(content) + """) """ + util.sort(content) + """
+                LIMIT
+                    """ + str(content['limit']) + """
+                OFFSET
+                    """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+                """
+        cur.execute(sql)
+        datas = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        providers = []
+        for data in datas:
+            providers.append(providerJson(data))
+
+        return make_response(
+        {
+            "data": providers,
+            "message": "success"
+        }, 
+        200)
+    except psycopg2.Error as error:
+        print(error)
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)
+
+@bp.route("/pagination_provider", methods=["POST"])
+@token_required
 def pagination_provider():
     try:
         conn = get_db_connection()

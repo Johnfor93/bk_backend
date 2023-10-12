@@ -7,7 +7,7 @@ import psycopg2
 
 from .database import get_db_connection
 from . import util
-from .auth import employee_required
+from .auth import employee_required, token_required
 
 bp = Blueprint("faculty", __name__)
 
@@ -20,13 +20,15 @@ def facultyJson(item):
     }
 
 @bp.route("/facultys", methods=["POST"])
-@employee_required
+@token_required
 def facultys():
     if(request.method == "POST"):
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            content = request.get_json()
+            content = request.form
+
+            print(content)
 
             error = ""
             if(not('faculty_name' in content.keys()) or len(content['faculty_name']) == 0):
@@ -59,10 +61,10 @@ def facultys():
                 INSERT INTO
                     m_faculty
                 VALUES
-                    (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING *
             """, (
                 faculty_code, 
-                content['university_code'],
                 content['faculty_name'], 
                 faculty_note, 
                 'Y', 
@@ -72,11 +74,31 @@ def facultys():
                 datetime.now())
             )
             conn.commit()
+            dataInserted = cur.fetchone()
+
+            if dataInserted != None:
+                cur.execute("""
+                INSERT INTO
+                    univ_to_faculty
+                VALUES
+                    (%s, %s)
+                RETURNING *
+                """, (dataInserted["faculty_code"], content["university_code"]))
+                conn.commit()
+            else:
+                cur.close()
+                conn.close()
+                return util.log_response({
+                    "success": False,
+                    "message": "Data gagal dimasukkan"
+                }, 400, request.method)
             cur.close()
             conn.close()
+
             return util.log_response({
                 "success": True,
-                "message": "Data sudah dimasukkan"
+                "message": "Data sudah dimasukkan",
+                "data": faculty_code
             }, 200, request.method)
         except psycopg2.Error as error:
             return util.log_response({
@@ -210,7 +232,7 @@ def faculty(faculty_code):
             }), 400)
 
 @bp.route("/pagination_faculty", methods=["POST"])
-@employee_required
+@token_required
 def pagination_faculty():
     try:
         conn = get_db_connection()
@@ -225,6 +247,7 @@ def pagination_faculty():
                     *
                 FROM
                     m_faculty
+                    INNER JOIN univ_to_faculty ON m_faculty.faculty_code = univ_to_faculty.faculty_code
                 """ + util.sort(content) + """
                 LIMIT
                     """ + str(content['limit']) + """
@@ -237,6 +260,7 @@ def pagination_faculty():
                     *
                 FROM
                     m_faculty
+                    INNER JOIN univ_to_faculty ON m_faculty.faculty_code = univ_to_faculty.faculty_code
                 WHERE
                     (""" + util.filter(content) + """) """ + util.sort(content) + """
                 LIMIT
@@ -259,6 +283,64 @@ def pagination_faculty():
             "message": "success"
         }, 
         200, request.method)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)
+    
+@bp.route("/employee_pagination_faculty", methods=["POST"])
+@employee_required
+def employee_pagination_faculty():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        content = request.get_json()
+
+        filter= util.filter(content)
+
+        if(filter==''):
+            sql = """
+                SELECT
+                    *
+                FROM
+                    m_faculty
+                    INNER JOIN univ_to_faculty ON m_faculty.faculty_code = univ_to_faculty.faculty_code
+                """ + util.sort(content) + """
+                LIMIT
+                    """ + str(content['limit']) + """
+                OFFSET
+                    """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+                """
+        else:
+            sql = """
+                SELECT
+                    *
+                FROM
+                    m_faculty
+                    INNER JOIN univ_to_faculty ON m_faculty.faculty_code = univ_to_faculty.faculty_code
+                WHERE
+                    (""" + util.filter(content) + """) """ + util.sort(content) + """
+                LIMIT
+                    """ + str(content['limit']) + """
+                OFFSET
+                    """ + str(int(content['limit']) * (int(content['page']) - 1)) + """
+                """
+        cur.execute(sql)
+        datas = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        facultys = []
+        for data in datas:
+            facultys.append(facultyJson(data))
+
+        return make_response(
+        {
+            "data": facultys,
+            "message": "success"
+        }, 
+        200)
     except psycopg2.Error as error:
         return make_response(jsonify({
             "success": False,
