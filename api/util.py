@@ -4,9 +4,34 @@ from flask import (
 import inspect
 from datetime import datetime
 from .database import get_db_connection
+from .util import getPeriod
 
 # def log_response(data, status = 200):
 #     return make_response(jsonify(data), status)
+
+def getPeriod():
+    timenow = datetime.now()
+
+    yearnow = timenow.year
+    monthnow = timenow.month
+
+    if(monthnow > 6):
+        periodStart = yearnow
+        periodEnd = yearnow+1
+    else:
+        periodStart = yearnow-1
+        periodEnd = yearnow
+
+    periodYear = str(periodStart)+"/"+str(periodEnd)
+
+    dateStartFirst = str(periodStart)+"-07-01"
+    dateEndSecond = str(periodEnd)+"-06-30"
+
+    return {
+        "periodYear"        : periodYear,
+        "dateStartFirst"    : dateStartFirst,
+        "dateEndSecond"     : dateEndSecond,
+    }
 
 def log_response(data, status, method):
     if "message" in data:
