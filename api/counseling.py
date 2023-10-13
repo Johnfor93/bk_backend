@@ -788,3 +788,90 @@ def overviewClassReport(classroom_code, organization_code):
             "success": False,
             "message": error.pgerror,
         }), 400)
+    
+@bp.route("/admin_pagination_counseling", methods=["POST"])
+@token_required
+def admin_pagination_counseling():
+    try:
+        content = request.get_json()
+   
+        conn = get_db_connection()
+        cur = conn.cursor()
+        (student_list, student_dict) = util.admin_getStudent(content["classroom_code"], content["organization_code"])
+
+        print(student_dict)
+        # if(response.status_code != 200):
+        #     return util.log_response({
+        #         "success": False,
+        #         "message": "Laman tidak dapat diakses",
+        #     }, 400, request.method)
+            
+        # datas = response.json()
+        # dataStudent = datas["data"]
+
+        cur.execute("""
+            CREATE TEMP TABLE students(student_code VARCHAR(40), student_name VARCHAR(40))
+        """)
+
+        filtered_student = list()
+
+        if('filter' in content.keys()):
+            for item in student_list:
+                if((content["filter"] in item["student_code"]) or (content["filter"] in item["student_name"])):
+                    filtered_student.append(item)
+        
+        if len(filtered_student):
+            student_list = filtered_student
+
+        for item in student_list:
+            print(item)
+            cur.execute("""
+                INSERT INTO students VALUES (%s, %s)
+            """, (item["student_code"], item["student_name"],))
+
+        thisPeriod = util.getPeriod()
+
+        cur.execute("""
+            SELECT 
+                counseling_code,
+                students.student_code,
+                students.student_name,
+                m_scope.scope_code,
+                m_scope.scope_name,
+                m_category.category_code,
+                m_category.category_name,
+                employee_code,
+                counseling_date,
+                problem,
+                conclusion,
+                followup,
+                counseling_note
+            FROM 
+                t_counseling
+                INNER JOIN m_scope ON t_counseling.scope_code = m_scope.scope_code
+                INNER JOIN m_category ON t_counseling.category_code = m_category.category_code
+                INNER JOIN students ON t_counseling.student_code = students.student_code
+            WHERE
+                counseling_date BETWEEN %s AND %s
+            ORDER BY
+                students.student_name
+        """, (thisPeriod["dateStartFirst"], thisPeriod["dateEndSecond"],))
+
+        classReportDatas = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        classReportJSON = list()
+
+        for data in classReportDatas:
+            classReportJSON.append(counselingReportJson(data))
+
+        return make_response(jsonify({
+            "data":classReportJSON,
+            "success": True}), 200)
+    except psycopg2.Error as error:
+        return make_response(jsonify({
+            "success": False,
+            "message": error.pgerror,
+        }), 400)
+     
