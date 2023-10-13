@@ -1,4 +1,6 @@
-from flask import (request, Blueprint, current_app, make_response, jsonify)
+from flask import (
+    request, Blueprint, current_app, make_response, jsonify
+    )
 from datetime import datetime
 
 import psycopg2
